@@ -88,13 +88,13 @@ def MAX_ITER_OOMMPP (ver):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def GAMMA_DDSS (ver):
-    return 2 * np.sqrt (np.log (cst.NN_HH (ver)))
+    return 2 * np.sqrt (np.log (NN_HH (ver)))
 
 def GAMMA_LASSO (ver): # just copying `GAMMA_DDSS`
-    return 2 * np.sqrt (np.log (cst.NN_HH (ver)))
+    return 2 * np.sqrt (np.log (NN_HH (ver)))
 
 def ETA_OOMMPP_2_NORM (ver):
-    return np.sqrt (3) * cst.NN_Y (ver)
+    return np.sqrt (3) * NN_Y (ver)
 
 def ETA_OOMMPP_INFTY_NORM (ver):
-    return 2 * np.sqrt (np.log (cst.NN_HH (ver)))
+    return 2 * np.sqrt (np.log (NN_HH (ver)))

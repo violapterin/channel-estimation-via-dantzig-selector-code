@@ -19,7 +19,7 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso (x, GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso (x, cst.GAMMA_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
@@ -37,7 +37,7 @@ def execute (ver):
             lst_legend.append ("OMP, $l_\infty$-norm")
             lst_method.append (
                 lambda x, y, c = c_0:
-                oommpp_infty_norm (x, c * ETA_OOMMPP_INFTY_NORM (ver) * y, ver))
+                oommpp_infty_norm (x, c * cst.ETA_OOMMPP_INFTY_NORM (ver) * y, ver))
 
     # Dantzig Selector error bound
     if (ver.focus == cls.Focus.DDSS or ver.focus == cls.Focus.ASSORTED):
