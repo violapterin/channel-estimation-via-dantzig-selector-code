@@ -16,6 +16,15 @@ def VALUE_SPACING ():
 def NUM_SIGMA ():
     return 7
 
+def ITER_MAX_CVX ():
+    return 32
+
+def TOLERANCE_ABS_CVX ():
+    return 1e-4
+
+def TOLERANCE_REL_CVX ():
+    return 1e-3
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def NN_YY (ver):
@@ -82,7 +91,7 @@ def NUM_GAMMA_DS (ver): # DS
     else: # cls.Focus.OOMMPP
         return 0
 
-def MAX_ITER_OOMMPP (ver):
+def ITER_MAX_OOMMPP (ver):
     return 4 * NN_HH (ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -98,3 +107,4 @@ def ETA_OOMMPP_2_NORM (ver):
 
 def ETA_OOMMPP_INFTY_NORM (ver):
     return 2 * np.sqrt (np.log (NN_HH (ver)))
+

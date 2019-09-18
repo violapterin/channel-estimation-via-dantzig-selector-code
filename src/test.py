@@ -9,44 +9,22 @@ from enum import Enum
 import constants as cst
 import classes as cls
 import functions as fct
+import random
 
-def foo (): baz ()
 
-def baz (): print ("Hey")
+foo = ["ant", "bee", "cat"]
+print (foo)
 
-foo ()
+if "cat" in foo:
+    hold_idx = foo.index("cat")
+    del foo [hold_idx]
+
+print (foo)
 
 quit()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-ff_bb = fct.ff_bb()
-ff_rr = fct.ff_rr()
-ww_bb = fct.ww_bb()
-ww_rr = fct.ww_rr()
-hh = fct.hh()
-zz = fct.zz()
-gg = fct.kk().conj().T @ hh @ fct.kk()
-
-pp = np.kron (
-    ff_bb.T @ ff_rr.T @ fct.kk().conj(),
-    ww_bb @ ww_rr @ fct.kk())
-g = fct.vectorize (gg)
-z = fct.vectorize (zz)
-sigma = 2
-y = pp @ g + sigma * z
-
-funs = []
-lst_gamma = [1,2,4,8]
-for gamma in lst_gamma:
-    funs.append (lambda x, y: alg.ddss_complex (x, y * gamma))
-for fun in funs:
-    est = alg.Estimation (pp, y, hh)
-    fun (est, sigma)
-    print (est.d)
-quit()
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 for _ in range (500):
     print ("experiment:", _)
