@@ -12,14 +12,16 @@ import functions as fct
 import random
 
 
-foo = ["ant", "bee", "cat"]
-print (foo)
 
-if "cat" in foo:
-    hold_idx = foo.index("cat")
-    del foo [hold_idx]
+a = cp.Variable (2)
+b = cp.Variable (2)
+prob = cp.Problem (
+    cp.Minimize (cp.norm (2*a+3*b, 2)),
+    [cp.norm (a)**3 + cp.norm (b)**3 <= 64, a>=0, b>=0])
 
-print (foo)
+prob.solve ()
+print (a.value)
+print (b.value)
 
 quit()
 

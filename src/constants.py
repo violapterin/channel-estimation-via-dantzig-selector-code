@@ -5,10 +5,10 @@ def NUM_GRID_PHASE ():
     return 16
 
 def LAMBDA_ANT ():
-    return 3
+    return 1
 
 def DIST_ANT ():
-    return 2
+    return 3
 
 def VALUE_SPACING ():
     return 2
@@ -17,7 +17,7 @@ def NUM_SIGMA ():
     return 7
 
 def ITER_MAX_CVX ():
-    return 32
+    return 24
 
 def TOLERANCE_ABS_CVX ():
     return 1e-4
@@ -85,7 +85,7 @@ def NUM_ETA (ver): # OMP
 
 def NUM_GAMMA_DS (ver): # DS
     if (ver.focus == cls.Focus.DDSS):
-        return 5
+        return 3
     elif (ver.focus == cls.Focus.ASSORTED):
         return 1
     else: # cls.Focus.OOMMPP

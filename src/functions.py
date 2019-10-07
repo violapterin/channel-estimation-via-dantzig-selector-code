@@ -20,7 +20,7 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso (x, cst.GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso_socp (x, cst.GAMMA_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
@@ -29,13 +29,14 @@ def execute (ver):
                 oommpp_fixed_times (x, cst.LL (ver), ver))
         # Orthogonal Matching Pursuit: limited l-2 norm
         for c_0 in multiple_values (cst.NUM_ETA (ver)):
-            lst_legend.append ("OMP, $l_2$-norm")
+            lst_legend.append ("OMP, $l_2$-norm, $\eta$ = " + '%.2f' % c_0 + "$\eta$")
+
             lst_method.append (
                 lambda x, y, c = c_0:
                 oommpp_2_norm (x, c * cst.ETA_OOMMPP_2_NORM (ver) * y, ver))
         # Orthogonal Matching Pursuit: limited l-infinity norm
         for c_0 in multiple_values (cst.NUM_ETA (ver)):
-            lst_legend.append ("OMP, $l_\infty$-norm")
+            lst_legend.append ("OMP, $l_\infty$-norm, $\eta$ = " + '%.2f' % c_0 + "$\eta$")
             lst_method.append (
                 lambda x, y, c = c_0:
                 oommpp_infty_norm (x, c * cst.ETA_OOMMPP_INFTY_NORM (ver) * y, ver))
@@ -46,7 +47,7 @@ def execute (ver):
         lst_method.append (lambda x, y: ddss_theory (x, y, ver))
         for c_0 in multiple_values (cst.NUM_GAMMA_DS (ver)):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c_0 + "$\sigma$")
-            lst_method.append (lambda x, y, c = c_0: ddss (x, c * y, ver))
+            lst_method.append (lambda x, y, c = c_0: ddss_socp (x, c * y, ver))
 
     assert (len (lst_method) == len (lst_legend))
     num_method = len (lst_method)
@@ -97,7 +98,7 @@ def execute (ver):
                 "    experiment ", count_prog,
                 sep = '', flush = True)
             print (
-                "      (", '%.1f' % rate_progress, "%; ",
+                "      (", '%.1f' % (100 * rate_progress), "%; ",
                 '%.2f' % ((time_hold - time_tot_start) / (60 * rate_progress)),
                 " min. remaining)",
                 sep = '', flush = True)
@@ -179,7 +180,8 @@ def llss (est, ver):
     est.g_hat = pp_inv @ est.y
     est.convert ()
 
-def lasso (est, gamma, ver):
+# Deprecated
+def lasso_direct (est, gamma, ver):
     est.refresh ()
     g = cp.Variable (cst.NN_H (ver), complex = True)
     prob = cp.Problem (
@@ -208,6 +210,86 @@ def lasso (est, gamma, ver):
         est.g_hat = np.linalg.pinv (est.pp) @ est.y
         return
     est.g_hat = g.value
+    est.convert ()
+
+def lasso_socp (est, gamma, ver):
+#    aa=[]
+#    b=[]
+#    c=[]
+#    d=[]
+#    for i in range (cst.NN_H (ver)):
+#        aa.append (
+#            np.concatenate (
+#                [indic_repr_mat (cst.NN_H (ver), i),
+#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
+#                axis= 1))
+#        b.append (np.zeros ((2 * cst.NN_H (ver))))
+#        c.append (
+#            np.concatenate (
+#                [np.zeros ((2 * cst.NN_H (ver))), indic_vec (cst.NN_H (ver), i)]))
+#        d.append (0)
+#    for i in range (cst.NN_H (ver)):
+#        aa.append (
+#            np.concatenate (
+#                [-indic_repr_mat (cst.NN_H (ver), i)
+#                        @ find_repr_mat (est.pp.conj().T)
+#                        @ find_repr_mat (est.pp),
+#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
+#                axis= 1))
+#        b.append (indic_repr_mat (cst.NN_H (ver), i)
+#            @ find_repr_mat (est.pp.conj().T)
+#            @ find_repr_vec (est.y))
+#        c.append (np.zeros ((3 * cst.NN_H (ver))))
+#        d.append (gamma)
+#
+#    t = np.concatenate (
+#        [np.zeros ((2 * cst.NN_H (ver))),
+#            np.ones ((cst.NN_H (ver)))])
+
+    est.refresh ()
+    g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
+    m_hat = cp.Variable (cst.NN_H (ver))
+
+    try:
+        pp_inv = np.linalg.pinv (est.pp)
+    except np.linalg.LinAlgError as e:
+        print ("Least square fails due to singularity!", flush = True)
+        print (e)
+        return
+    g_repr_hat.value = find_repr_vec (pp_inv @ est.y)
+
+    #constr = [cp.SOC (c[i].T @ x + d[i], aa[i] @ x + b[i]) for i in range (2 * cst.NN_H (ver))]
+    constr = []
+    pp_repr = find_repr_mat (est.pp)
+    pp_repr_adj = find_repr_mat (est.pp.conj().T)
+    y_repr = find_repr_vec (est.y)
+    y_repr_adj = find_repr_vec (est.y.conj().T)
+    for i in range (cst.NN_H (ver)):
+        constr.append (
+            cp.norm (indic_repr_mat (cst.NN_H (ver), i) @ g_repr_hat)
+            <= (indic_vec (cst.NN_H (ver), i).T @ m_hat))
+        constr.append (
+            np.ones ((cst.NN_H (ver))).T @ m_hat
+            <= gamma)
+
+    prob = cp.Problem (
+        cp.Minimize (cp.norm (y_repr - pp_repr @ g_repr_hat)),
+        constr)
+
+    try:
+        prob.solve (
+            solver = cp.ECOS,
+            warm_start = True,
+            max_iters = cst.ITER_MAX_CVX (),
+            abstol = cst.TOLERANCE_ABS_CVX (),
+            reltol = cst.TOLERANCE_REL_CVX ())
+    except cp.error.SolverError as e:
+        print ("Lasso fails to solve the program!", flush = True)
+        print (e)
+        est.g_hat = np.linalg.pinv (est.pp) @ est.y
+        return
+
+    est.g_hat = inv_find_repr_vec (g_repr_hat.value)
     est.convert ()
 
 def oommpp_fixed_times (est, times, ver):
@@ -259,10 +341,11 @@ def oommpp_2_norm (est, eta, ver):
             print (e)
             return
         r = est.y - pp_ss @ pp_ss_inv @ est.y
-        if (np.linalg.norm (r, 2) <= eta):
+        if (np.linalg.norm (r, ord = 2) <= eta
+            or (count_iter >= cst.ITER_MAX_OOMMPP (ver))):
             break
-        if (count_iter >= cst.ITER_MAX_OOMMPP (ver)):
-            break
+    #if count_iter >2:
+    #    print ("Surprise! OMP 2: ", count_iter) # XXX
     g_hat_ss = pp_ss_inv @ est.y
     for i in range (len(ss)):
         est.g_hat [ss[i]] = g_hat_ss[i] 
@@ -289,9 +372,11 @@ def oommpp_infty_norm (est, eta, ver):
             print (e)
             return
         r = est.y - pp_ss @ pp_ss_inv @ est.y
-        if (np.linalg.norm (pp_ss.conj().T @ r, 2) <= eta
+        if (np.linalg.norm (pp_ss.conj().T @ r, ord = np.inf) <= eta
             or count_iter >= cst.ITER_MAX_OOMMPP):
             break
+    #if count_iter >2:
+    #    print ("Surprise! OMP inf: ", count_iter) # XXX
     g_hat_ss = pp_ss_inv @ est.y
     for i in range (len(ss)):
         est.g_hat [ss[i]] = g_hat_ss[i] 
@@ -301,22 +386,102 @@ def ddss_theory (est, sigma, ver):
     est.refresh ()
     est.d = 8 * np.sqrt (cst.LL (ver) * np.log (cst.NN_HH (ver))) * sigma
 
-def ddss (est, gamma, ver):
-    est.refresh ()
-    g = cp.Variable (cst.NN_H (ver), complex = True)
-    prob = cp.Problem (
-        cp.Minimize (cp.norm (g, 1)),
-        [cp.norm (est.pp.conj().T @ (est.pp @ g - est.y), "inf")
-            <= gamma])
+# Deprecate#d
+#def ddss_direct (est, gamma, ver):
+#    est.refresh ()
+#    g = cp.Variable (cst.NN_H (ver), complex = True)
+#    prob = cp.Problem (
+#        cp.Minimize (cp.norm (g, 1)),
+#        [cp.norm (est.pp.conj().T @ (est.pp @ g - est.y), "inf")
+#            <= gamma])
+#
+#    # warm start
+#    try:
+#        pp_inv = np.linalg.pinv (est.pp)
+#    except np.linalg.LinAlgError as e:
+#        print ("Least square fails due to singularity!", flush = True)
+#        print (e)
+#        return
+#    g.value = pp_inv @ est.y
+#
+#    try:
+#        prob.solve (
+#            solver = cp.ECOS,
+#            warm_start = True,
+#            max_iters = cst.ITER_MAX_CVX (),
+#            abstol = cst.TOLERANCE_ABS_CVX (),
+#            reltol = cst.TOLERANCE_REL_CVX ())
+#    except cp.error.SolverError as e:
+#        print ("Complex DS fails to solve the program!", flush = True)
+#        print (e)
+#        est.g_hat = (np.linalg.pinv (est.pp) @ est.y)
+#        return
+#    est.g_hat = g.value
+#    est.convert ()
 
-    # warm start
+def ddss_socp (est, gamma, ver):
+#    aa=[]
+#    b=[]
+#    c=[]
+#    d=[]
+#    for i in range (cst.NN_H (ver)):
+#        aa.append (
+#            np.concatenate (
+#                [indic_repr_mat (cst.NN_H (ver), i),
+#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
+#                axis= 1))
+#        b.append (np.zeros ((2 * cst.NN_H (ver))))
+#        c.append (
+#            np.concatenate (
+#                [np.zeros ((2 * cst.NN_H (ver))), indic_vec (cst.NN_H (ver), i)]))
+#        d.append (0)
+#    for i in range (cst.NN_H (ver)):
+#        aa.append (
+#            np.concatenate (
+#                [-indic_repr_mat (cst.NN_H (ver), i)
+#                        @ find_repr_mat (est.pp.conj().T)
+#                        @ find_repr_mat (est.pp),
+#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
+#                axis= 1))
+#        b.append (indic_repr_mat (cst.NN_H (ver), i)
+#            @ find_repr_mat (est.pp.conj().T)
+#            @ find_repr_vec (est.y))
+#        c.append (np.zeros ((3 * cst.NN_H (ver))))
+#        d.append (gamma)
+#
+#    t = np.concatenate (
+#        [np.zeros ((2 * cst.NN_H (ver))),
+#            np.ones ((cst.NN_H (ver)))])
+
+    est.refresh ()
+    g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
+    m_hat = cp.Variable (cst.NN_H (ver))
+
     try:
         pp_inv = np.linalg.pinv (est.pp)
     except np.linalg.LinAlgError as e:
         print ("Least square fails due to singularity!", flush = True)
         print (e)
         return
-    g.value = pp_inv @ est.y
+    g_repr_hat.value = find_repr_vec (pp_inv @ est.y)
+
+    constr = []
+    pp_repr = find_repr_mat (est.pp)
+    pp_repr_adj = find_repr_mat (est.pp.conj().T)
+    y_repr = find_repr_vec (est.y)
+    for i in range (cst.NN_H (ver)):
+        constr.append (
+            cp.norm (
+                indic_repr_mat (cst.NN_H (ver), i) @ pp_repr_adj @ pp_repr @ g_repr_hat
+                - indic_repr_mat (cst.NN_H (ver), i) @ pp_repr_adj @ y_repr)
+            <= gamma)
+        constr.append (
+            cp.norm (indic_repr_mat (cst.NN_H (ver), i) @ g_repr_hat)
+            <= (indic_vec (cst.NN_H (ver), i).T @ m_hat))
+
+    prob = cp.Problem (
+        cp.Minimize (np.ones ((cst.NN_H (ver))).T @ m_hat),
+        constr)
 
     try:
         prob.solve (
@@ -326,11 +491,12 @@ def ddss (est, gamma, ver):
             abstol = cst.TOLERANCE_ABS_CVX (),
             reltol = cst.TOLERANCE_REL_CVX ())
     except cp.error.SolverError as e:
-        print ("Complex DS fails to solve the program!", flush = True)
+        print ("Lasso fails to solve the program!", flush = True)
         print (e)
-        est.g_hat = (np.linalg.pinv (est.pp) @ est.y)
+        est.g_hat = np.linalg.pinv (est.pp) @ est.y
         return
-    est.g_hat = g.value
+
+    est.g_hat = inv_find_repr_vec (g_repr_hat.value)
     est.convert ()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -393,6 +559,41 @@ def get_kk (ver): # DFT matrix
 def arr_resp (t, ver):
     return ((1 / np.sqrt (cst.NN_HH (ver)))
         * np.array ([np.exp (1J * i * t) for i in range (cst.NN_HH (ver))]))
+
+def find_repr_vec (v):
+    ret =np.zeros ((2*len (v)))
+    for i in range (len (v)):
+        ret [2*i] =np.real (v [i])
+        ret [2*i+1] =np.imag (v [i])
+    return ret
+
+def inv_find_repr_vec (v):
+    assert (len (v)%2 == 0)
+    len_v =int (len (v)/2)
+    v_re =np.array ([v [2*i] for i in range (len_v)])
+    v_im =np.array ([v [2*i+1] for i in range (len_v)])
+    return v_re +1J *v_im
+
+def find_repr_mat (aa):
+    ret =np.zeros ((2 *(aa.shape[0]), 2 *(aa.shape[1])))
+    for i in range (aa.shape[0]):
+        for j in range (aa.shape[1]):
+            ret [2*i] [2*j] =np.real (aa [i,j])
+            ret [2*i+1] [2*j] =np.imag (aa [i,j])
+            ret [2*i] [2*j+1] =-np.imag (aa [i,j])
+            ret [2*i+1] [2*j+1] =np.real (aa [i,j])
+    return ret
+
+def indic_vec (nn, i):
+    ret =np.zeros ((nn))
+    ret [i] =1
+    return ret
+
+def indic_repr_mat (nn, i):
+    ret =np.zeros ((2*nn, 2*nn))
+    ret [2*i] [2*i] =1
+    ret [2*i+1] [2*i+1] =1
+    return ret
 
 def vectorize (v):
     return np.reshape (v, (1,-1)) [0]
