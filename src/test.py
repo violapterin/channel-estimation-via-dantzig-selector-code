@@ -12,16 +12,11 @@ import functions as fct
 import random
 
 
+print (2.9)
+print (np.rint (2.9))
 
-a = cp.Variable (2)
-b = cp.Variable (2)
-prob = cp.Problem (
-    cp.Minimize (cp.norm (2*a+3*b, 2)),
-    [cp.norm (a)**3 + cp.norm (b)**3 <= 64, a>=0, b>=0])
-
-prob.solve ()
-print (a.value)
-print (b.value)
+print (3.1)
+print (np.rint (3.1))
 
 quit()
 

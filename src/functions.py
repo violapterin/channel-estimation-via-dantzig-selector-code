@@ -20,23 +20,23 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso_socp (x, cst.GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso_orig (x, cst.GAMMA_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
         lst_legend.append ("OMP, $L$ times")
         lst_method.append (lambda x, y:
-                oommpp_fixed_times (x, cst.LL (ver), ver))
+                oommpp_fixed_times (x, cst.LL (), ver))
         # Orthogonal Matching Pursuit: limited l-2 norm
         for c_0 in multiple_values (cst.NUM_ETA (ver)):
-            lst_legend.append ("OMP, $l_2$-norm, $\eta$ = " + '%.2f' % c_0 + "$\eta$")
+            lst_legend.append ("OMP, $l_2$-norm, $\eta$ = " + '%.2f' % c_0 + "$\sigma$")
 
             lst_method.append (
                 lambda x, y, c = c_0:
                 oommpp_2_norm (x, c * cst.ETA_OOMMPP_2_NORM (ver) * y, ver))
         # Orthogonal Matching Pursuit: limited l-infinity norm
         for c_0 in multiple_values (cst.NUM_ETA (ver)):
-            lst_legend.append ("OMP, $l_\infty$-norm, $\eta$ = " + '%.2f' % c_0 + "$\eta$")
+            lst_legend.append ("OMP, $l_\infty$-norm, $\eta$ = " + '%.2f' % c_0 + "$\sigma$")
             lst_method.append (
                 lambda x, y, c = c_0:
                 oommpp_infty_norm (x, c * cst.ETA_OOMMPP_INFTY_NORM (ver) * y, ver))
@@ -47,7 +47,7 @@ def execute (ver):
         lst_method.append (lambda x, y: ddss_theory (x, y, ver))
         for c_0 in multiple_values (cst.NUM_GAMMA_DS (ver)):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c_0 + "$\sigma$")
-            lst_method.append (lambda x, y, c = c_0: ddss_socp (x, c * y, ver))
+            lst_method.append (lambda x, y, c = c_0: ddss_orig (x, c * y, ver))
 
     assert (len (lst_method) == len (lst_legend))
     num_method = len (lst_method)
@@ -180,72 +180,7 @@ def llss (est, ver):
     est.g_hat = pp_inv @ est.y
     est.convert ()
 
-# Deprecated
-def lasso_direct (est, gamma, ver):
-    est.refresh ()
-    g = cp.Variable (cst.NN_H (ver), complex = True)
-    prob = cp.Problem (
-        cp.Minimize (cp.norm (est.pp @ g - est.y, 2)),
-        [cp.norm (g, 1) <= gamma])
-
-    # warm start
-    try:
-        pp_inv = np.linalg.pinv (est.pp)
-    except np.linalg.LinAlgError as e:
-        print ("Least square fails due to singularity!", flush = True)
-        print (e)
-        return
-    g.value = pp_inv @ est.y
-
-    try:
-        prob.solve (
-            solver = cp.ECOS,
-            warm_start = True,
-            max_iters = cst.ITER_MAX_CVX (),
-            abstol = cst.TOLERANCE_ABS_CVX (),
-            reltol = cst.TOLERANCE_REL_CVX ())
-    except cp.error.SolverError as e:
-        print ("Lasso fails to solve the program!", flush = True)
-        print (e)
-        est.g_hat = np.linalg.pinv (est.pp) @ est.y
-        return
-    est.g_hat = g.value
-    est.convert ()
-
-def lasso_socp (est, gamma, ver):
-#    aa=[]
-#    b=[]
-#    c=[]
-#    d=[]
-#    for i in range (cst.NN_H (ver)):
-#        aa.append (
-#            np.concatenate (
-#                [indic_repr_mat (cst.NN_H (ver), i),
-#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
-#                axis= 1))
-#        b.append (np.zeros ((2 * cst.NN_H (ver))))
-#        c.append (
-#            np.concatenate (
-#                [np.zeros ((2 * cst.NN_H (ver))), indic_vec (cst.NN_H (ver), i)]))
-#        d.append (0)
-#    for i in range (cst.NN_H (ver)):
-#        aa.append (
-#            np.concatenate (
-#                [-indic_repr_mat (cst.NN_H (ver), i)
-#                        @ find_repr_mat (est.pp.conj().T)
-#                        @ find_repr_mat (est.pp),
-#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
-#                axis= 1))
-#        b.append (indic_repr_mat (cst.NN_H (ver), i)
-#            @ find_repr_mat (est.pp.conj().T)
-#            @ find_repr_vec (est.y))
-#        c.append (np.zeros ((3 * cst.NN_H (ver))))
-#        d.append (gamma)
-#
-#    t = np.concatenate (
-#        [np.zeros ((2 * cst.NN_H (ver))),
-#            np.ones ((cst.NN_H (ver)))])
-
+def lasso_orig (est, gamma, ver):
     est.refresh ()
     g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
     m_hat = cp.Variable (cst.NN_H (ver))
@@ -258,7 +193,6 @@ def lasso_socp (est, gamma, ver):
         return
     g_repr_hat.value = find_repr_vec (pp_inv @ est.y)
 
-    #constr = [cp.SOC (c[i].T @ x + d[i], aa[i] @ x + b[i]) for i in range (2 * cst.NN_H (ver))]
     constr = []
     pp_repr = find_repr_mat (est.pp)
     pp_repr_adj = find_repr_mat (est.pp.conj().T)
@@ -384,75 +318,12 @@ def oommpp_infty_norm (est, eta, ver):
 
 def ddss_theory (est, sigma, ver):
     est.refresh ()
-    est.d = 8 * np.sqrt (cst.LL (ver) * np.log (cst.NN_HH (ver))) * sigma
+    #est.d = 8 * np.sqrt (cst.LL () * np.log (cst.NN_HH (ver))) * sigma
+    est.d = sigma * (cst.LL () ** (1/2)) * (
+            3.29 * np.log (cst.NN_HH (ver))
+            + 4.56 * (np.log (cst.NN_HH (ver)) ** (3/2)))
 
-# Deprecate#d
-#def ddss_direct (est, gamma, ver):
-#    est.refresh ()
-#    g = cp.Variable (cst.NN_H (ver), complex = True)
-#    prob = cp.Problem (
-#        cp.Minimize (cp.norm (g, 1)),
-#        [cp.norm (est.pp.conj().T @ (est.pp @ g - est.y), "inf")
-#            <= gamma])
-#
-#    # warm start
-#    try:
-#        pp_inv = np.linalg.pinv (est.pp)
-#    except np.linalg.LinAlgError as e:
-#        print ("Least square fails due to singularity!", flush = True)
-#        print (e)
-#        return
-#    g.value = pp_inv @ est.y
-#
-#    try:
-#        prob.solve (
-#            solver = cp.ECOS,
-#            warm_start = True,
-#            max_iters = cst.ITER_MAX_CVX (),
-#            abstol = cst.TOLERANCE_ABS_CVX (),
-#            reltol = cst.TOLERANCE_REL_CVX ())
-#    except cp.error.SolverError as e:
-#        print ("Complex DS fails to solve the program!", flush = True)
-#        print (e)
-#        est.g_hat = (np.linalg.pinv (est.pp) @ est.y)
-#        return
-#    est.g_hat = g.value
-#    est.convert ()
-
-def ddss_socp (est, gamma, ver):
-#    aa=[]
-#    b=[]
-#    c=[]
-#    d=[]
-#    for i in range (cst.NN_H (ver)):
-#        aa.append (
-#            np.concatenate (
-#                [indic_repr_mat (cst.NN_H (ver), i),
-#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
-#                axis= 1))
-#        b.append (np.zeros ((2 * cst.NN_H (ver))))
-#        c.append (
-#            np.concatenate (
-#                [np.zeros ((2 * cst.NN_H (ver))), indic_vec (cst.NN_H (ver), i)]))
-#        d.append (0)
-#    for i in range (cst.NN_H (ver)):
-#        aa.append (
-#            np.concatenate (
-#                [-indic_repr_mat (cst.NN_H (ver), i)
-#                        @ find_repr_mat (est.pp.conj().T)
-#                        @ find_repr_mat (est.pp),
-#                    np.zeros ((2 * cst.NN_H (ver), cst.NN_H (ver)))],
-#                axis= 1))
-#        b.append (indic_repr_mat (cst.NN_H (ver), i)
-#            @ find_repr_mat (est.pp.conj().T)
-#            @ find_repr_vec (est.y))
-#        c.append (np.zeros ((3 * cst.NN_H (ver))))
-#        d.append (gamma)
-#
-#    t = np.concatenate (
-#        [np.zeros ((2 * cst.NN_H (ver))),
-#            np.ones ((cst.NN_H (ver)))])
-
+def ddss_orig (est, gamma, ver):
     est.refresh ()
     g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
     m_hat = cp.Variable (cst.NN_H (ver))
@@ -509,12 +380,6 @@ def mat_complex_normal (nn_1, nn_2):
     return ((np.random.normal (0, 1, (nn_1, nn_2))
         +1J * np.random.normal (0, 1, (nn_1, nn_2))))
 
-#def mat_uniform_phase (nn_1, nn_2):
-#    return ( np.exp (
-#        2 * np.pi * 1J
-#            * np.random.randint ( cst.NUM_GRID_PHASE (), size = (nn_1, nn_2))
-#            / cst.NUM_GRID_PHASE ()))
-
 def pick_zz (ver):
     return mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver))
 
@@ -538,9 +403,9 @@ def pick_ww_rr (ver):
 
 def pick_hh (ver):
     ret =np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype=complex)
-    for _ in range (cst.LL (ver)):
-        alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver))
-            + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver)))
+    for _ in range (cst.LL ()):
+        alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL ())
+            + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL ()))
         phi = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
             * np.sin (np.random.uniform (0, 2 * np.pi)))
         theta = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
@@ -657,7 +522,7 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
         borderaxespad = 0.)
 
     full_title = (full_title.replace (" ", "_"))
-    os.system ("mkdir -p plt") # To create new directory only if nonexistent
+    os.system ("mkdir -p ../plt") # To create new directory only if nonexistent
     path_plot_out = (
         os.path.abspath (os.path.join (os.getcwd (), os.path.pardir))
         + "/plt/" + full_title)
@@ -693,7 +558,7 @@ def save_table (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
     full_title = full_title + switcher [ver.focus] + ".txt"
 
     full_title = (full_title.replace (" ", "_"))
-    os.system ("mkdir -p dat") # To create new directory only if nonexistent
+    os.system ("mkdir -p ../dat") # To create new directory only if nonexistent
     path_table_out = (
         os.path.abspath (os.path.join (os.getcwd (), os.path.pardir))
         + "/dat/" + full_title)

@@ -10,6 +10,9 @@ def LAMBDA_ANT ():
 def DIST_ANT ():
     return 3
 
+def LL ():
+    return 4
+
 def VALUE_SPACING ():
     return 2
 
@@ -27,37 +30,19 @@ def TOLERANCE_REL_CVX ():
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def NN_YY (ver):
+def NN_HH (ver):
     switcher = {
-        cls.Size.TEST : 3,
-        cls.Size.SMALL : 5,
-        cls.Size.MEDIUM : 7,
-        cls.Size.BIG : 9}
+        cls.Size.TEST : 8,
+        cls.Size.SMALL : 16,
+        cls.Size.MEDIUM : 32,
+        cls.Size.BIG : 64}
     return switcher [ver.size]
 
 def NN_RR (ver):
-    switcher = {
-        cls.Size.TEST : 6,
-        cls.Size.SMALL : 10,
-        cls.Size.MEDIUM : 14,
-        cls.Size.BIG : 18}
-    return switcher [ver.size]
+    return int (np.round (np.log (NN_HH (ver)) ** 2))
 
-def NN_HH (ver):
-    switcher = {
-        cls.Size.TEST : 12,
-        cls.Size.SMALL : 20,
-        cls.Size.MEDIUM : 28,
-        cls.Size.BIG : 36}
-    return switcher [ver.size]
-
-def LL (ver):
-    switcher = {
-        cls.Size.TEST : 1,
-        cls.Size.SMALL : 2,
-        cls.Size.MEDIUM : 3,
-        cls.Size.BIG : 4}
-    return switcher [ver.size]
+def NN_YY (ver):
+    return int (np.round (np.log (NN_HH (ver))))
 
 def NN_Y (ver):
     return NN_YY (ver) ** 2
