@@ -12,11 +12,11 @@ import functions as fct
 import random
 
 
-print (2.9)
-print (np.rint (2.9))
-
-print (3.1)
-print (np.rint (3.1))
+a=np.zeros ((2,2), dtype='bool')
+a[0][0]=1
+a[1][1]=1
+b =[[3.3,0],[0,4.4]]
+print (a@b)
 
 quit()
 

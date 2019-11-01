@@ -20,7 +20,7 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso_orig (x, cst.GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso_direct (x, cst.GAMMA_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
@@ -47,7 +47,7 @@ def execute (ver):
         lst_method.append (lambda x, y: ddss_theory (x, y, ver))
         for c_0 in multiple_values (cst.NUM_GAMMA_DS (ver)):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c_0 + "$\sigma$")
-            lst_method.append (lambda x, y, c = c_0: ddss_orig (x, c * y, ver))
+            lst_method.append (lambda x, y, c = c_0: ddss_direct (x, c * y, ver))
 
     assert (len (lst_method) == len (lst_legend))
     num_method = len (lst_method)
@@ -99,7 +99,8 @@ def execute (ver):
                 sep = '', flush = True)
             print (
                 "      (", '%.1f' % (100 * rate_progress), "%; ",
-                '%.2f' % ((time_hold - time_tot_start) / (60 * rate_progress)),
+                '%.2f' % (
+                    (time_hold - time_tot_start) * (1 - rate_progress) / (rate_progress * 60)),
                 " min. remaining)",
                 sep = '', flush = True)
         lst_err_abs = list (np.array (lst_err_abs) / cst.NUM_REPEAT (ver))
@@ -180,7 +181,22 @@ def llss (est, ver):
     est.g_hat = pp_inv @ est.y
     est.convert ()
 
-def lasso_orig (est, gamma, ver):
+def lasso_direct (est, gamma, ver):
+    est.refresh ()
+    g = cp.Variable (cst.NN_H (ver), complex = True)
+    prob = cp.Problem (
+        cp.Minimize (cp.norm (est.pp @ g - est.y, 2)),
+        [cp.norm (g, 1) <= gamma])
+    try:
+        prob.solve ()
+    except cp.error.SolverError:
+        print ("Lasso fails to solve the program!", flush = True)
+        est.g_hat = np.linalg.pinv (est.pp) @ est.y
+        return
+    est.g_hat = g.value
+    est.convert ()
+
+def lasso_cast (est, gamma, ver):
     est.refresh ()
     g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
     m_hat = cp.Variable (cst.NN_H (ver))
@@ -212,7 +228,7 @@ def lasso_orig (est, gamma, ver):
 
     try:
         prob.solve (
-            solver = cp.ECOS,
+            solver = cp.CVXOPT,
             warm_start = True,
             max_iters = cst.ITER_MAX_CVX (),
             abstol = cst.TOLERANCE_ABS_CVX (),
@@ -323,7 +339,23 @@ def ddss_theory (est, sigma, ver):
             3.29 * np.log (cst.NN_HH (ver))
             + 4.56 * (np.log (cst.NN_HH (ver)) ** (3/2)))
 
-def ddss_orig (est, gamma, ver):
+def ddss_direct (est, gamma, ver):
+    est.refresh ()
+    g = cp.Variable (cst.NN_H (ver), complex = True)
+    prob = cp.Problem (
+        cp.Minimize (cp.norm (g, 1)),
+        [cp.norm (est.pp.conj().T @ (est.pp @ g - est.y), "inf")
+            <= gamma])
+    try:
+        prob.solve ()
+    except cp.error.SolverError:
+        print ("Dantzig Selector fails to solve the program!", flush = True)
+        est.g_hat = (np.linalg.pinv (est.pp) @ est.y)
+        return
+    est.g_hat = g.value
+    est.convert ()
+
+def ddss_cast (est, gamma, ver):
     est.refresh ()
     g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
     m_hat = cp.Variable (cst.NN_H (ver))
@@ -331,7 +363,7 @@ def ddss_orig (est, gamma, ver):
     try:
         pp_inv = np.linalg.pinv (est.pp)
     except np.linalg.LinAlgError as e:
-        print ("Least square fails due to singularity!", flush = True)
+        print ("Dantzig Selector fails due to singularity!", flush = True)
         print (e)
         return
     g_repr_hat.value = find_repr_vec (pp_inv @ est.y)
@@ -356,13 +388,13 @@ def ddss_orig (est, gamma, ver):
 
     try:
         prob.solve (
-            solver = cp.ECOS,
+            solver = cp.CVXOPT,
             warm_start = True,
             max_iters = cst.ITER_MAX_CVX (),
             abstol = cst.TOLERANCE_ABS_CVX (),
             reltol = cst.TOLERANCE_REL_CVX ())
     except cp.error.SolverError as e:
-        print ("Lasso fails to solve the program!", flush = True)
+        print ("Dantzig Selector fails to solve the program!", flush = True)
         print (e)
         est.g_hat = np.linalg.pinv (est.pp) @ est.y
         return
@@ -450,12 +482,12 @@ def find_repr_mat (aa):
     return ret
 
 def indic_vec (nn, i):
-    ret =np.zeros ((nn))
+    ret =np.zeros ((nn), dtype = 'bool')
     ret [i] =1
     return ret
 
 def indic_repr_mat (nn, i):
-    ret =np.zeros ((2*nn, 2*nn))
+    ret =np.zeros ((2*nn, 2*nn), dtype = 'bool')
     ret [2*i] [2*i] =1
     ret [2*i+1] [2*i+1] =1
     return ret
@@ -529,6 +561,7 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
     if os.path.isfile (path_plot_out):
         os.system ("rm -f " + path_plot_out)
     plt.savefig (path_plot_out, bbox_inches = "tight")
+    plt.close ("all")
 
 def save_table (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
     full_title = title + ", "
