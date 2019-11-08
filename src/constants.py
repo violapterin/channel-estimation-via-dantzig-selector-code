@@ -20,13 +20,13 @@ def NUM_SIGMA ():
     return 7
 
 def ITER_MAX_CVX ():
-    return 16
+    return 64
 
 def TOLERANCE_ABS_CVX ():
-    return 1e-3
+    return 1e-6
 
 def TOLERANCE_REL_CVX ():
-    return 1e-1
+    return 1e-5
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -54,10 +54,10 @@ def NN_H (ver):
 
 def NUM_REPEAT (ver):
     switcher = {
-        cls.Size.TEST : 8,
-        cls.Size.SMALL : 32,
-        cls.Size.MEDIUM : 32,
-        cls.Size.BIG : 32}
+        cls.Size.TEST : 16,
+        cls.Size.SMALL : 64,
+        cls.Size.MEDIUM : 64,
+        cls.Size.BIG : 64}
     return switcher [ver.size]
 
 def NUM_ETA (ver): # OMP
@@ -78,6 +78,10 @@ def NUM_GAMMA_DS (ver): # DS
 
 def ITER_MAX_OOMMPP (ver):
     return 4 * NN_HH (ver)
+
+# To avoid division by zero.
+def EPSILON ():
+    return 10 ** (-12)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

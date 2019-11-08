@@ -6,25 +6,29 @@ import constants as cst
 import functions as fct
 
 class Estimation:
-    def __init__ (self, pp, y, hh, ver):
-        self.pp = pp
-        self.y = y
-        self.hh = hh
+    def __init__ (self, pp_rep, y_rep, hh, ver):
         self.ver = ver
-        self.g_hat = np.zeros ((cst.NN_H (ver)), dtype = complex)
-        self.hh_hat = np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype = complex)
-        self.d = 0
+        self.hh = hh
+        self.y_rep = y_rep
+        self.pp_rep = pp_rep
+        self.g_rep_hat = np.zeros (2 * (cst.NN_H (self.ver)))
+        self.g_hat = np.zeros ((cst.NN_H (self.ver)), dtype = complex)
+        self.gg_hat = np.zeros ((cst.NN_HH (self.ver), cst.NN_HH (self.ver)), dtype = complex)
+        self.hh_hat = np.zeros ((cst.NN_HH (self.ver), cst.NN_HH (self.ver)), dtype = complex)
+        self.d = cst.EPSILON ()
 
     def refresh (self):
+        self.g_rep_hat = np.zeros (2 * (cst.NN_H (self.ver)))
         self.g_hat = np.zeros ((cst.NN_H (self.ver)), dtype = complex)
+        self.gg_hat = np.zeros ((cst.NN_HH (self.ver), cst.NN_HH (self.ver)), dtype = complex)
         self.hh_hat = np.zeros ((cst.NN_HH (self.ver), cst.NN_HH (self.ver)), dtype = complex)
-        self.d = 0
+        self.d = cst.EPSILON ()
 
     def convert (self):
-        self.hh_hat = (fct.get_kk (self.ver)
-            @ fct.inv_vectorize (self.g_hat, cst.NN_HH (self.ver), cst.NN_HH (self.ver))
-            @ fct.get_kk (self.ver).conj().T)
-        self.d = np.linalg.norm (self.hh_hat - self.hh, ord=2)
+        self.g_hat =fct.inv_find_rep_vec (self.g_rep_hat)
+        self.gg_hat =fct.inv_vectorize (self.g_hat, cst.NN_HH (self.ver), cst.NN_HH (self.ver))
+        self.hh_hat = (fct.get_kk (self.ver) @ self.gg_hat @ fct.get_kk (self.ver).conj().T)
+        self.d = np.linalg.norm (self.hh_hat - self.hh, ord='fro') + cst.EPSILON ()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

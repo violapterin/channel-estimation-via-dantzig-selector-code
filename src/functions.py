@@ -47,7 +47,7 @@ def execute (ver):
         lst_method.append (lambda x, y: ddss_theory (x, y, ver))
         for c_0 in multiple_values (cst.NUM_GAMMA_DS (ver)):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c_0 + "$\sigma$")
-            lst_method.append (lambda x, y, c = c_0: ddss_direct (x, c * y, ver))
+            lst_method.append (lambda x, y, c = c_0: ddss_cast (x, c * y, ver))
 
     assert (len (lst_method) == len (lst_legend))
     num_method = len (lst_method)
@@ -82,7 +82,9 @@ def execute (ver):
             g = vectorize (gg)
             z = vectorize (zz)
             y = pp @ g + sigma * z
-            est = cls.Estimation (pp, y, hh, ver)
+            pp_rep = find_rep_mat (pp)
+            y_rep = find_rep_vec (y)
+            est = cls.Estimation (pp_rep, y_rep, hh, ver)
 
             for i in range (num_method):
                 time_each_start = time.time ()
@@ -173,234 +175,169 @@ def execute (ver):
 def llss (est, ver):
     est.refresh ()
     try:
-        pp_inv = np.linalg.pinv (est.pp)
+        pp_rep_inv = np.linalg.pinv (est.pp_rep)
+        est.g_rep_hat = pp_rep_inv @ est.y_rep
     except np.linalg.LinAlgError as e:
         print ("Least square fails due to singularity!", flush = True)
         print (e)
+        est.refresh ()
         return
-    est.g_hat = pp_inv @ est.y
     est.convert ()
 
 def lasso_direct (est, gamma, ver):
     est.refresh ()
-    g = cp.Variable (cst.NN_H (ver), complex = True)
+    g_rep = cp.Variable (2 * cst.NN_H (ver))
     prob = cp.Problem (
-        cp.Minimize (cp.norm (est.pp @ g - est.y, 2)),
-        [cp.norm (g, 1) <= gamma])
-    try:
-        prob.solve ()
-    except cp.error.SolverError:
-        print ("Lasso fails to solve the program!", flush = True)
-        est.g_hat = np.linalg.pinv (est.pp) @ est.y
-        return
-    est.g_hat = g.value
-    est.convert ()
-
-def lasso_cast (est, gamma, ver):
-    est.refresh ()
-    g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
-    m_hat = cp.Variable (cst.NN_H (ver))
-
-    try:
-        pp_inv = np.linalg.pinv (est.pp)
-    except np.linalg.LinAlgError as e:
-        print ("Least square fails due to singularity!", flush = True)
-        print (e)
-        return
-    g_repr_hat.value = find_repr_vec (pp_inv @ est.y)
-
-    constr = []
-    pp_repr = find_repr_mat (est.pp)
-    pp_repr_adj = find_repr_mat (est.pp.conj().T)
-    y_repr = find_repr_vec (est.y)
-    y_repr_adj = find_repr_vec (est.y.conj().T)
-    for i in range (cst.NN_H (ver)):
-        constr.append (
-            cp.norm (indic_repr_mat (cst.NN_H (ver), i) @ g_repr_hat)
-            <= (indic_vec (cst.NN_H (ver), i).T @ m_hat))
-        constr.append (
-            np.ones ((cst.NN_H (ver))).T @ m_hat
-            <= gamma)
-
-    prob = cp.Problem (
-        cp.Minimize (cp.norm (y_repr - pp_repr @ g_repr_hat)),
-        constr)
-
+        cp.Minimize (cp.norm (est.pp_rep @ g_rep - est.y_rep, 2)),
+        [cp.norm (g_rep, 1) <= gamma])
     try:
         prob.solve (
-            solver = cp.CVXOPT,
-            warm_start = True,
-            max_iters = cst.ITER_MAX_CVX (),
-            abstol = cst.TOLERANCE_ABS_CVX (),
-            reltol = cst.TOLERANCE_REL_CVX ())
-    except cp.error.SolverError as e:
+            solver = cp.ECOS,
+            reltol = cst.TOLERANCE_REL_CVX (),
+            abstol = cst.TOLERANCE_ABS_CVX ())
+        est.g_rep_hat = g_rep.value
+    except cp.error.SolverError:
         print ("Lasso fails to solve the program!", flush = True)
-        print (e)
-        est.g_hat = np.linalg.pinv (est.pp) @ est.y
-        return
-
-    est.g_hat = inv_find_repr_vec (g_repr_hat.value)
+        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
 def oommpp_fixed_times (est, times, ver):
     est.refresh ()
-    r = est.y # remainder
+    r = est.y_rep # remainder
     tt = range (cst.NN_H (ver)) # list of column indices
     ss = [] # extracted column indices
     count_iter = 0
-    pp_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+    pp_rep_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
     while True:
         count_iter += 1
-        lst_match = [abs (est.pp [:, i].conj().T @ r) for i in tt]
+        lst_match = [abs (est.pp_rep [:, i].T @ r) for i in tt]
         s = np.argmax (lst_match)
         ss.append (s)
         ss = list (sorted (set (ss)))
-        pp_ss = est.pp [:, ss]
+        pp_rep_ss = est.pp_rep [:, ss]
         try:
-            pp_ss_inv = np.linalg.pinv (pp_ss)
+            pp_rep_ss_inv = np.linalg.pinv (pp_rep_ss)
         except np.linalg.LinAlgError as e:
             print ("Orthogonal mathcing pursuit fails due to singularity!", flush = True)
             print (e)
-            return
-        r = est.y - pp_ss @ pp_ss_inv @ est.y
+            est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
+            break
+        r = est.y_rep - pp_rep_ss @ pp_rep_ss_inv @ est.y_rep
         if (count_iter >= times):
             break
-    g_hat_ss = pp_ss_inv @ est.y
+    g_hat_ss = pp_rep_ss_inv @ est.y_rep
     for i in range (len(ss)):
         est.g_hat [ss[i]] = g_hat_ss[i] 
     est.convert ()
 
 def oommpp_2_norm (est, eta, ver):
     est.refresh ()
-    r = est.y # remained vector
+    r = est.y_rep # remained vector
     tt = range (cst.NN_H (ver)) # list of column indices
     ss = [] # extracted column indices
     count_iter = 0
-    pp_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+    pp_rep_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
     while True:
         count_iter += 1
-        lst_match = [abs (est.pp [:, i].conj().T @ r) for i in tt]
+        lst_match = [abs (est.pp_rep [:, i].T @ r) for i in tt]
         s = np.argmax (lst_match)
         ss.append (s)
         ss = list (sorted (set (ss)))
-        pp_ss = est.pp [:, ss]
+        pp_rep_ss = est.pp_rep [:, ss]
         try:
-            pp_ss_inv = np.linalg.pinv (pp_ss)
+            pp_rep_ss_inv = np.linalg.pinv (pp_rep_ss)
         except np.linalg.LinAlgError as e:
             print ("Orthogonal mathcing pursuit fails due to singularity!", flush = True)
             print (e)
-            return
-        r = est.y - pp_ss @ pp_ss_inv @ est.y
+            est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
+            break
+        r = est.y_rep - pp_rep_ss @ pp_rep_ss_inv @ est.y_rep
         if (np.linalg.norm (r, ord = 2) <= eta
             or (count_iter >= cst.ITER_MAX_OOMMPP (ver))):
             break
-    #if count_iter >2:
-    #    print ("Surprise! OMP 2: ", count_iter) # XXX
-    g_hat_ss = pp_ss_inv @ est.y
+    g_hat_ss = pp_rep_ss_inv @ est.y_rep
     for i in range (len(ss)):
         est.g_hat [ss[i]] = g_hat_ss[i] 
     est.convert ()
 
 def oommpp_infty_norm (est, eta, ver):
     est.refresh ()
-    r = est.y # remained vector
+    r = est.y_rep # remained vector
     tt = range (cst.NN_H (ver)) # list of column indices
     ss = [] # extracted column indices
     count_iter = 0
-    pp_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+    pp_rep_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
     while True:
         count_iter += 1
-        lst_match = [abs (est.pp [:, i].conj().T @ r) for i in tt]
+        lst_match = [abs (est.pp_rep [:, i].T @ r) for i in tt]
         s = np.argmax (lst_match)
         ss.append (s)
         ss = list (sorted (set (ss)))
-        pp_ss = est.pp [:, ss]
+        pp_rep_ss = est.pp_rep [:, ss]
         try:
-            pp_ss_inv = np.linalg.pinv (pp_ss)
+            pp_rep_ss_inv = np.linalg.pinv (pp_rep_ss)
         except np.linalg.LinAlgError as e:
             print ("Orthogonal mathcing pursuit fails due to singularity!", flush = True)
             print (e)
-            return
-        r = est.y - pp_ss @ pp_ss_inv @ est.y
-        if (np.linalg.norm (pp_ss.conj().T @ r, ord = np.inf) <= eta
+            est.g_rep_hat = np.linalg.pinv (est.pp_rep_rep) @ est.y_rep
+            break
+        r = est.y_rep - pp_rep_ss @ pp_rep_ss_inv @ est.y_rep
+        if (np.linalg.norm (pp_rep_ss.T @ r, ord = np.inf) <= eta
             or count_iter >= cst.ITER_MAX_OOMMPP):
             break
-    #if count_iter >2:
-    #    print ("Surprise! OMP inf: ", count_iter) # XXX
-    g_hat_ss = pp_ss_inv @ est.y
+    g_hat_ss = pp_rep_ss_inv @ est.y_rep
     for i in range (len(ss)):
         est.g_hat [ss[i]] = g_hat_ss[i] 
     est.convert ()
 
 def ddss_theory (est, sigma, ver):
     est.refresh ()
-    #est.d = 8 * np.sqrt (cst.LL () * np.log (cst.NN_HH (ver))) * sigma
     est.d = sigma * (cst.LL () ** (1/2)) * (
             3.29 * np.log (cst.NN_HH (ver))
             + 4.56 * (np.log (cst.NN_HH (ver)) ** (3/2)))
 
 def ddss_direct (est, gamma, ver):
     est.refresh ()
-    g = cp.Variable (cst.NN_H (ver), complex = True)
+    g_rep = cp.Variable (2 * cst.NN_H (ver))
     prob = cp.Problem (
-        cp.Minimize (cp.norm (g, 1)),
-        [cp.norm (est.pp.conj().T @ (est.pp @ g - est.y), "inf")
+        cp.Minimize (cp.norm (g_rep, 1)),
+        [cp.norm (est.pp_rep.T @ (est.pp_rep @ g_rep - est.y_rep), "inf")
             <= gamma])
     try:
-        prob.solve ()
+        prob.solve (
+            solver = cp.ECOS,
+            reltol = cst.TOLERANCE_REL_CVX (),
+            abstol = cst.TOLERANCE_ABS_CVX ())
+        est.g_rep_hat = g_rep.value
     except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
-        est.g_hat = (np.linalg.pinv (est.pp) @ est.y)
-        return
-    est.g_hat = g.value
+        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
 def ddss_cast (est, gamma, ver):
     est.refresh ()
-    g_repr_hat = cp.Variable (2 * cst.NN_H (ver))
-    m_hat = cp.Variable (cst.NN_H (ver))
-
-    try:
-        pp_inv = np.linalg.pinv (est.pp)
-    except np.linalg.LinAlgError as e:
-        print ("Dantzig Selector fails due to singularity!", flush = True)
-        print (e)
-        return
-    g_repr_hat.value = find_repr_vec (pp_inv @ est.y)
-
-    constr = []
-    pp_repr = find_repr_mat (est.pp)
-    pp_repr_adj = find_repr_mat (est.pp.conj().T)
-    y_repr = find_repr_vec (est.y)
-    for i in range (cst.NN_H (ver)):
-        constr.append (
-            cp.norm (
-                indic_repr_mat (cst.NN_H (ver), i) @ pp_repr_adj @ pp_repr @ g_repr_hat
-                - indic_repr_mat (cst.NN_H (ver), i) @ pp_repr_adj @ y_repr)
-            <= gamma)
-        constr.append (
-            cp.norm (indic_repr_mat (cst.NN_H (ver), i) @ g_repr_hat)
-            <= (indic_vec (cst.NN_H (ver), i).T @ m_hat))
-
+    g_rep = cp.Variable (2 * cst.NN_H (ver))
+    g_rep_norm = cp.Variable (2 * cst.NN_H (ver))
     prob = cp.Problem (
-        cp.Minimize (np.ones ((cst.NN_H (ver))).T @ m_hat),
-        constr)
+        cp.Minimize (np.ones (2 * cst.NN_H (ver)) @ g_rep_norm),
+        [est.pp_rep.T @ (est.pp_rep @ g_rep - est.y_rep)
+                <= gamma * np.ones (2 * cst.NN_H (ver)),
+            est.pp_rep.T @ (est.pp_rep @ g_rep - est.y_rep)
+                >= -gamma * np.ones (2 * cst.NN_H (ver)),
+            g_rep <= g_rep_norm,
+            g_rep >= -g_rep_norm])
 
     try:
         prob.solve (
-            solver = cp.CVXOPT,
-            warm_start = True,
-            max_iters = cst.ITER_MAX_CVX (),
-            abstol = cst.TOLERANCE_ABS_CVX (),
-            reltol = cst.TOLERANCE_REL_CVX ())
-    except cp.error.SolverError as e:
+            solver = cp.ECOS,
+            reltol = cst.TOLERANCE_REL_CVX (),
+            abstol = cst.TOLERANCE_ABS_CVX ())
+        est.g_rep_hat = g_rep.value
+    except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
-        print (e)
-        est.g_hat = np.linalg.pinv (est.pp) @ est.y
-        return
-
-    est.g_hat = inv_find_repr_vec (g_repr_hat.value)
+        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -425,12 +362,12 @@ def pick_ww_bb (ver):
 
 def pick_ff_rr (ver):
     kk = get_kk (ver)
-    kk_ss = kk [:, random.sample(list (range (cst.NN_HH(ver))), cst.NN_RR(ver))]
+    kk_ss = kk [:, random.sample (list (range (cst.NN_HH(ver))), cst.NN_RR(ver))]
     return kk_ss / np.sqrt (cst.NN_RR (ver))
 
 def pick_ww_rr (ver):
     kk = get_kk (ver)
-    kk_ss = kk [random.sample(list (range (cst.NN_HH(ver))), cst.NN_RR(ver)), :]
+    kk_ss = kk [random.sample (list (range (cst.NN_HH(ver))), cst.NN_RR(ver)), :]
     return kk_ss / np.sqrt (cst.NN_RR (ver))
 
 def pick_hh (ver):
@@ -442,7 +379,7 @@ def pick_hh (ver):
             * np.sin (np.random.uniform (0, 2 * np.pi)))
         theta = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
             * np.sin (np.random.uniform (0, 2 * np.pi)))
-        ret += alpha * arr_resp (phi, ver) @ arr_resp (theta, ver).conj().T
+        ret += alpha * np.outer (arr_resp (phi, ver), arr_resp (theta, ver))
     return ret
 
 def get_kk (ver): # DFT matrix
@@ -457,21 +394,21 @@ def arr_resp (t, ver):
     return ((1 / np.sqrt (cst.NN_HH (ver)))
         * np.array ([np.exp (1J * i * t) for i in range (cst.NN_HH (ver))]))
 
-def find_repr_vec (v):
+def find_rep_vec (v):
     ret =np.zeros ((2*len (v)))
     for i in range (len (v)):
         ret [2*i] =np.real (v [i])
         ret [2*i+1] =np.imag (v [i])
     return ret
 
-def inv_find_repr_vec (v):
+def inv_find_rep_vec (v):
     assert (len (v)%2 == 0)
     len_v =int (len (v)/2)
     v_re =np.array ([v [2*i] for i in range (len_v)])
     v_im =np.array ([v [2*i+1] for i in range (len_v)])
     return v_re +1J *v_im
 
-def find_repr_mat (aa):
+def find_rep_mat (aa):
     ret =np.zeros ((2 *(aa.shape[0]), 2 *(aa.shape[1])))
     for i in range (aa.shape[0]):
         for j in range (aa.shape[1]):
@@ -486,7 +423,7 @@ def indic_vec (nn, i):
     ret [i] =1
     return ret
 
-def indic_repr_mat (nn, i):
+def indic_rep_mat (nn, i):
     ret =np.zeros ((2*nn, 2*nn), dtype = 'bool')
     ret [2*i] [2*i] =1
     ret [2*i+1] [2*i+1] =1

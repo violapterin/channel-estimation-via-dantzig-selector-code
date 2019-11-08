@@ -11,12 +11,19 @@ import classes as cls
 import functions as fct
 import random
 
+ver = cls.Version (cls.Size.TEST, cls.Focus.DDSS)
 
-a=np.zeros ((2,2), dtype='bool')
-a[0][0]=1
-a[1][1]=1
-b =[[3.3,0],[0,4.4]]
-print (a@b)
+ret =np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype=complex)
+for _ in range (cst.LL ()):
+    alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL ())
+        + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL ()))
+    phi = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
+        * np.sin (np.random.uniform (0, 2 * np.pi)))
+    theta = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
+        * np.sin (np.random.uniform (0, 2 * np.pi)))
+    ret += alpha * np.outer (fct.arr_resp (phi, ver), fct.arr_resp (theta, ver))
+    print (ret)
+
 
 quit()
 
