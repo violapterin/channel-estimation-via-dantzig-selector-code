@@ -26,7 +26,7 @@ def TOLERANCE_ABS_CVX ():
     return 1e-6
 
 def TOLERANCE_REL_CVX ():
-    return 1e-5
+    return 1e-4
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

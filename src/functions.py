@@ -20,7 +20,7 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso_direct (x, cst.GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso_cast (x, cst.GAMMA_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
@@ -81,7 +81,7 @@ def execute (ver):
                 ww_bb @ ww_rr @ kk)
             g = vectorize (gg)
             z = vectorize (zz)
-            y = pp @ g + sigma * z
+            y = pp @ g + (sigma / np.sqrt(2)) * z
             pp_rep = find_rep_mat (pp)
             y_rep = find_rep_vec (y)
             est = cls.Estimation (pp_rep, y_rep, hh, ver)
@@ -186,16 +186,48 @@ def llss (est, ver):
 
 def lasso_direct (est, gamma, ver):
     est.refresh ()
-    g_rep = cp.Variable (2 * cst.NN_H (ver))
+    g = cp.Variable (2 * cst.NN_H (ver))
+
     prob = cp.Problem (
-        cp.Minimize (cp.norm (est.pp_rep @ g_rep - est.y_rep, 2)),
-        [cp.norm (g_rep, 1) <= gamma])
+        cp.Minimize (cp.norm (est.pp_rep @ g - est.y_rep, 2)),
+        [cp.norm (g, 1) <= gamma])
+
     try:
         prob.solve (
             solver = cp.ECOS,
             reltol = cst.TOLERANCE_REL_CVX (),
             abstol = cst.TOLERANCE_ABS_CVX ())
-        est.g_rep_hat = g_rep.value
+        est.g_rep_hat = g.value
+    except cp.error.SolverError:
+        print ("Lasso fails to solve the program!", flush = True)
+        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
+    est.convert ()
+
+def lasso_cast (est, gamma, ver):
+    est.refresh ()
+    i = np.ones ((2 * cst.NN_H (ver)))
+    c = cp.Variable (1)
+    g = cp.Variable (2 * cst.NN_H (ver))
+    u = cp.Variable (2 * cst.NN_H (ver))
+    v = cp.Variable (2 * cst.NN_H (ver))
+    s = cp.Variable (2 * cst.NN_Y (ver))
+
+    prob = cp.Problem (
+        cp.Minimize (c),
+        [u >= 0,
+            v >= 0,
+            (u + v) @ i <= gamma,
+            c >= 0,
+            cp.norm (s, 2) <= c,
+            g == u - v,
+            s == est.y_rep - est.pp_rep @ g])
+
+    try:
+        prob.solve (
+            solver = cp.ECOS,
+            reltol = cst.TOLERANCE_REL_CVX (),
+            abstol = cst.TOLERANCE_ABS_CVX ())
+        est.g_rep_hat = g.value
     except cp.error.SolverError:
         print ("Lasso fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
@@ -298,17 +330,19 @@ def ddss_theory (est, sigma, ver):
 
 def ddss_direct (est, gamma, ver):
     est.refresh ()
-    g_rep = cp.Variable (2 * cst.NN_H (ver))
+    g = cp.Variable (2 * cst.NN_H (ver))
+
     prob = cp.Problem (
-        cp.Minimize (cp.norm (g_rep, 1)),
-        [cp.norm (est.pp_rep.T @ (est.pp_rep @ g_rep - est.y_rep), "inf")
+        cp.Minimize (cp.norm (g, 1)),
+        [cp.norm (est.pp_rep.T @ (est.y_rep - est.pp_rep @ g), "inf")
             <= gamma])
+
     try:
         prob.solve (
             solver = cp.ECOS,
             reltol = cst.TOLERANCE_REL_CVX (),
             abstol = cst.TOLERANCE_ABS_CVX ())
-        est.g_rep_hat = g_rep.value
+        est.g_rep_hat = g.value
     except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
@@ -316,23 +350,26 @@ def ddss_direct (est, gamma, ver):
 
 def ddss_cast (est, gamma, ver):
     est.refresh ()
-    g_rep = cp.Variable (2 * cst.NN_H (ver))
-    g_rep_norm = cp.Variable (2 * cst.NN_H (ver))
+    i = np.ones ((2 * cst.NN_H (ver)))
+    g = cp.Variable (2 * cst.NN_H (ver))
+    f = cp.Variable (2 * cst.NN_H (ver))
+    t = cp.Variable (2 * cst.NN_H (ver))
+
     prob = cp.Problem (
-        cp.Minimize (np.ones (2 * cst.NN_H (ver)) @ g_rep_norm),
-        [est.pp_rep.T @ (est.pp_rep @ g_rep - est.y_rep)
-                <= gamma * np.ones (2 * cst.NN_H (ver)),
-            est.pp_rep.T @ (est.pp_rep @ g_rep - est.y_rep)
-                >= -gamma * np.ones (2 * cst.NN_H (ver)),
-            g_rep <= g_rep_norm,
-            g_rep >= -g_rep_norm])
+        cp.Minimize (i @ f),
+        [f >= 0,
+            g <= f,
+            g >= -f,
+            t <= gamma * i,
+            t >= -gamma * i,
+            t == est.pp_rep.T @ est.y_rep - est.pp_rep.T @ est.pp_rep @ g])
 
     try:
         prob.solve (
             solver = cp.ECOS,
             reltol = cst.TOLERANCE_REL_CVX (),
             abstol = cst.TOLERANCE_ABS_CVX ())
-        est.g_rep_hat = g_rep.value
+        est.g_rep_hat = g.value
     except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
@@ -450,7 +487,7 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
         cls.Size.SMALL: "small",
         cls.Size.MEDIUM: "medium",
         cls.Size.BIG: "big"}
-    full_title += switcher [ver.size] + ".png"
+    full_title += switcher [ver.size]
 
     plt.close ("all")
     plt.title (full_title, fontsize = 15)
@@ -494,7 +531,7 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
     os.system ("mkdir -p ../plt") # To create new directory only if nonexistent
     path_plot_out = (
         os.path.abspath (os.path.join (os.getcwd (), os.path.pardir))
-        + "/plt/" + full_title)
+        + "/plt/" + full_title + ".png")
     if os.path.isfile (path_plot_out):
         os.system ("rm -f " + path_plot_out)
     plt.savefig (path_plot_out, bbox_inches = "tight")
