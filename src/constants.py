@@ -20,13 +20,13 @@ def NUM_SIGMA ():
     return 7
 
 def ITER_MAX_CVX ():
-    return 64
+    return 32
 
 def TOLERANCE_ABS_CVX ():
-    return 1e-6
+    return 1e-4
 
 def TOLERANCE_REL_CVX ():
-    return 1e-4
+    return 1e-3
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

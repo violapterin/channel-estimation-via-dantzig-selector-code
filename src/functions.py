@@ -20,7 +20,7 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso_cast (x, cst.GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso_ssooccpp (x, cst.GAMMA_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
@@ -47,7 +47,7 @@ def execute (ver):
         lst_method.append (lambda x, y: ddss_theory (x, y, ver))
         for c_0 in multiple_values (cst.NUM_GAMMA_DS (ver)):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c_0 + "$\sigma$")
-            lst_method.append (lambda x, y, c = c_0: ddss_cast (x, c * y, ver))
+            lst_method.append (lambda x, y, c = c_0: ddss_llpp (x, c * y, ver))
 
     assert (len (lst_method) == len (lst_legend))
     num_method = len (lst_method)
@@ -184,6 +184,8 @@ def llss (est, ver):
         return
     est.convert ()
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 def lasso_direct (est, gamma, ver):
     est.refresh ()
     g = cp.Variable (2 * cst.NN_H (ver))
@@ -193,45 +195,92 @@ def lasso_direct (est, gamma, ver):
         [cp.norm (g, 1) <= gamma])
 
     try:
-        prob.solve (
-            solver = cp.ECOS,
-            reltol = cst.TOLERANCE_REL_CVX (),
-            abstol = cst.TOLERANCE_ABS_CVX ())
+        prob.solve (solver = cp.ECOS)
         est.g_rep_hat = g.value
     except cp.error.SolverError:
         print ("Lasso fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
-def lasso_cast (est, gamma, ver):
+def lasso_ssooccpp (est, gamma, ver):
     est.refresh ()
-    i = np.ones ((2 * cst.NN_H (ver)))
-    c = cp.Variable (1)
-    g = cp.Variable (2 * cst.NN_H (ver))
-    u = cp.Variable (2 * cst.NN_H (ver))
-    v = cp.Variable (2 * cst.NN_H (ver))
-    s = cp.Variable (2 * cst.NN_Y (ver))
+    nn = 2 * cst.NN_H (ver)
+    zz = np.zeros ((nn, nn))
+    aa = np.block ([est.pp_rep, -est.pp_rep, np.zeros ((2 * cst.NN_Y (ver), 1))])
+    b = np.block ([np.zeros ((2 * nn)), 1])
+    c = np.block ([np.ones ((2 * nn)), 0])
+    x = cp.Variable (2 * nn + 1)
 
     prob = cp.Problem (
-        cp.Minimize (c),
-        [u >= 0,
-            v >= 0,
-            (u + v) @ i <= gamma,
-            c >= 0,
-            cp.norm (s, 2) <= c,
-            g == u - v,
-            s == est.y_rep - est.pp_rep @ g])
+        cp.Minimize (b @ x),
+        [x >= 0,
+            c @ x <= gamma,
+            cp.norm (aa @ x -est.y_rep, 2) <= b @ x])
+
+    try:
+        prob.solve (solver = cp.ECOS)
+        est.g_rep_hat = (x.value) [0 : nn] - (x.value) [nn : 2*nn]
+    except cp.error.SolverError:
+        print ("Lasso fails to solve the program!", flush = True)
+        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
+    est.convert ()
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+def ddss_theory (est, sigma, ver):
+    est.refresh ()
+    est.d = sigma * (cst.LL () ** (1/2)) * (
+            3.29 * np.log (cst.NN_HH (ver))
+            + 4.56 * (np.log (cst.NN_HH (ver)) ** (3/2)))
+
+def ddss_direct (est, gamma, ver):
+    est.refresh ()
+    g = cp.Variable (2 * cst.NN_H (ver))
+
+    prob = cp.Problem (
+        cp.Minimize (cp.norm (g, 1)),
+        [cp.norm (est.pp_rep.T @ (est.y_rep - est.pp_rep @ g), "inf")
+            <= gamma])
+
+    try:
+        prob.solve (solver = cp.ECOS)
+        est.g_rep_hat = g.value
+    except cp.error.SolverError:
+        print ("Dantzig Selector fails to solve the program!", flush = True)
+        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
+    est.convert ()
+
+def ddss_llpp (est, gamma, ver):
+    est.refresh ()
+    nn = 2 * cst.NN_H (ver)
+    zz = np.zeros ((nn, nn))
+    i = np.block ([np.zeros ((nn)), np.ones ((nn))])
+    k1 = np.block ([est.pp_rep.T @ est.y_rep - gamma * np.ones ((nn)), np.zeros ((nn))])
+    k2 = np.block ([est.pp_rep.T @ est.y_rep + gamma * np.ones ((nn)), np.zeros ((nn))])
+    aa = np.block ([[zz, zz], [zz, np.eye (nn)]])
+    bb = np.block ([[np.eye (nn), np.eye (nn)], [-np.eye (nn), np.eye (nn)]])
+    cc = np.block ([[est.pp_rep.T @ est.pp_rep, zz], [zz, zz]])
+    x = cp.Variable (2 * nn)
+
+    prob = cp.Problem (
+        cp.Minimize (i @ x),
+        [aa @ x >= 0,
+            bb @ x >= 0,
+            cc @ x - k1 >= 0,
+            cc @ x - k2 <= 0])
 
     try:
         prob.solve (
-            solver = cp.ECOS,
-            reltol = cst.TOLERANCE_REL_CVX (),
-            abstol = cst.TOLERANCE_ABS_CVX ())
-        est.g_rep_hat = g.value
+            solver = cp.GLPK,
+            glpk = {'msg_lev': 'GLP_MSG_OFF'})
+        est.g_rep_hat = (x.value) [0 : nn]
     except cp.error.SolverError:
-        print ("Lasso fails to solve the program!", flush = True)
+        print ("Dantzig Selector fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def oommpp_fixed_times (est, times, ver):
     est.refresh ()
@@ -321,60 +370,6 @@ def oommpp_infty_norm (est, eta, ver):
     for i in range (len(ss)):
         est.g_hat [ss[i]] = g_hat_ss[i] 
     est.convert ()
-
-def ddss_theory (est, sigma, ver):
-    est.refresh ()
-    est.d = sigma * (cst.LL () ** (1/2)) * (
-            3.29 * np.log (cst.NN_HH (ver))
-            + 4.56 * (np.log (cst.NN_HH (ver)) ** (3/2)))
-
-def ddss_direct (est, gamma, ver):
-    est.refresh ()
-    g = cp.Variable (2 * cst.NN_H (ver))
-
-    prob = cp.Problem (
-        cp.Minimize (cp.norm (g, 1)),
-        [cp.norm (est.pp_rep.T @ (est.y_rep - est.pp_rep @ g), "inf")
-            <= gamma])
-
-    try:
-        prob.solve (
-            solver = cp.ECOS,
-            reltol = cst.TOLERANCE_REL_CVX (),
-            abstol = cst.TOLERANCE_ABS_CVX ())
-        est.g_rep_hat = g.value
-    except cp.error.SolverError:
-        print ("Dantzig Selector fails to solve the program!", flush = True)
-        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
-    est.convert ()
-
-def ddss_cast (est, gamma, ver):
-    est.refresh ()
-    i = np.ones ((2 * cst.NN_H (ver)))
-    g = cp.Variable (2 * cst.NN_H (ver))
-    f = cp.Variable (2 * cst.NN_H (ver))
-    t = cp.Variable (2 * cst.NN_H (ver))
-
-    prob = cp.Problem (
-        cp.Minimize (i @ f),
-        [f >= 0,
-            g <= f,
-            g >= -f,
-            t <= gamma * i,
-            t >= -gamma * i,
-            t == est.pp_rep.T @ est.y_rep - est.pp_rep.T @ est.pp_rep @ g])
-
-    try:
-        prob.solve (
-            solver = cp.ECOS,
-            reltol = cst.TOLERANCE_REL_CVX (),
-            abstol = cst.TOLERANCE_ABS_CVX ())
-        est.g_rep_hat = g.value
-    except cp.error.SolverError:
-        print ("Dantzig Selector fails to solve the program!", flush = True)
-        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
-    est.convert ()
-
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

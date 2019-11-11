@@ -6,25 +6,26 @@ import numpy as np
 import cvxpy as cp
 from enum import Enum
 
-import constants as cst
-import classes as cls
-import functions as fct
+#import constants as cst
+#import classes as cls
+#import functions as fct
 import random
 
-ver = cls.Version (cls.Size.TEST, cls.Focus.DDSS)
+a =np.array ([[1,1,2,2,3,3,4,4], [5,5,6,6,7,7,8,8]])
+b =a [:,0:2]
+cc =np.block ([[np.eye (3), np.eye (3)], [-np.eye (3), np.eye (3)]])
+e1 =np.array ([1,2,3,4])
+e2 =np.ones ((4))
+d =np.block ([e1, e2])
+print (b)
+quit()
 
-ret =np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype=complex)
-for _ in range (cst.LL ()):
-    alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL ())
-        + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL ()))
-    phi = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
-        * np.sin (np.random.uniform (0, 2 * np.pi)))
-    theta = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
-        * np.sin (np.random.uniform (0, 2 * np.pi)))
-    ret += alpha * np.outer (fct.arr_resp (phi, ver), fct.arr_resp (theta, ver))
-    print (ret)
-
-
+a =np.array ([[1,2], [3,4]])
+b =np.array ([[2,4], [6,8]])
+c =np.array ([[0,0], [0,0]])
+d =np.array ([[0,0], [0,0]])
+aa =np.block([[a,b],[c,d]])
+print (aa)
 quit()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
