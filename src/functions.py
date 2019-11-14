@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import matplotlib.pyplot as plt
 import os
 import time
@@ -212,7 +213,7 @@ def lasso_ssooccpp (est, gamma, ver):
     x = cp.Variable (2 * nn + 1)
 
     prob = cp.Problem (
-        cp.Minimize (b @ x),
+        cp.Minimize (b.T @ x),
         [x >= 0,
             c @ x <= gamma,
             cp.norm (aa @ x -est.y_rep, 2) <= b @ x])
@@ -255,30 +256,27 @@ def ddss_llpp (est, gamma, ver):
     nn = 2 * cst.NN_H (ver)
     zz = np.zeros ((nn, nn))
     i = np.block ([np.zeros ((nn)), np.ones ((nn))])
-    k1 = np.block ([est.pp_rep.T @ est.y_rep - gamma * np.ones ((nn)), np.zeros ((nn))])
-    k2 = np.block ([est.pp_rep.T @ est.y_rep + gamma * np.ones ((nn)), np.zeros ((nn))])
-    aa = np.block ([[zz, zz], [zz, np.eye (nn)]])
-    bb = np.block ([[np.eye (nn), np.eye (nn)], [-np.eye (nn), np.eye (nn)]])
-    cc = np.block ([[est.pp_rep.T @ est.pp_rep, zz], [zz, zz]])
+    k = np.block (
+        [est.pp_rep.T @ est.y_rep - gamma * np.ones ((nn)),
+            -est.pp_rep.T @ est.y_rep - gamma * np.ones ((nn))])
+    aa = np.block ([[np.eye (nn), np.eye (nn)], [-np.eye (nn), np.eye (nn)], [zz, np.eye (nn)]])
+    cc = np.block ([[est.pp_rep.T @ est.pp_rep, zz], [-est.pp_rep.T @ est.pp_rep, zz]])
+    aa = sp.sparse.coo_matrix (aa)
+    cc = sp.sparse.coo_matrix (cc)
     x = cp.Variable (2 * nn)
 
     prob = cp.Problem (
-        cp.Minimize (i @ x),
+        cp.Minimize (i.T @ x),
         [aa @ x >= 0,
-            bb @ x >= 0,
-            cc @ x - k1 >= 0,
-            cc @ x - k2 <= 0])
+            cc @ x >= k])
 
     try:
-        prob.solve (
-            solver = cp.GLPK,
-            glpk = {'msg_lev': 'GLP_MSG_OFF'})
+        prob.solve (solver = cp.CVXOPT)
         est.g_rep_hat = (x.value) [0 : nn]
     except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
-
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

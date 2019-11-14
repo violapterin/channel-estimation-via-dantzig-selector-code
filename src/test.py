@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt # plotting functions
 import os
 import numpy as np
+import scipy as sp
 import cvxpy as cp
 from enum import Enum
 
@@ -10,6 +11,23 @@ from enum import Enum
 #import classes as cls
 #import functions as fct
 import random
+
+aa = np.eye (3)
+zz = np.zeros ((3,3))
+aa = sp.sparse.coo_matrix (aa)
+zz = sp.sparse.coo_matrix (zz)
+print (aa)
+print (zz)
+quit ()
+
+a = np.array ([[1,0], [0,5]])
+b = a
+a = sp.sparse.coo_matrix (a)
+c = a.T @ a + a
+print (np.linalg.norm (c.toarray()))
+#print (np.linalg.norm (b.T @ a))
+#print (np.linalg.norm (a.T @ a))
+quit()
 
 a =np.array ([[1,1,2,2,3,3,4,4], [5,5,6,6,7,7,8,8]])
 b =a [:,0:2]
