@@ -3,7 +3,7 @@
 import functions as fct
 import classes as cls
 
-ver = cls.Version (cls.Size.SMALL, cls.Focus.ASSORTED)
+ver = cls.Version (cls.Size.MEDIUM, cls.Focus.ASSORTED)
 fct.execute (ver)
 
 

@@ -21,7 +21,7 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso_ssooccpp (x, cst.GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso_qqpp (x, cst.GAMMA_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
@@ -203,24 +203,28 @@ def lasso_direct (est, gamma, ver):
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
-def lasso_ssooccpp (est, gamma, ver):
+def lasso_qqpp (est, gamma, ver):
     est.refresh ()
     nn = 2 * cst.NN_H (ver)
-    zz = np.zeros ((nn, nn))
-    aa = np.block ([est.pp_rep, -est.pp_rep, np.zeros ((2 * cst.NN_Y (ver), 1))])
-    b = np.block ([np.zeros ((2 * nn)), 1])
-    c = np.block ([np.ones ((2 * nn)), 0])
-    x = cp.Variable (2 * nn + 1)
+    i = 2 * gamma * np.ones ((2 * cst.NN_H (ver)))
+    k = 2 * est.pp_rep.T @ est.y_rep
+    qq = est.pp_rep.T @ est.pp_rep
+    g = cp.Variable ((2 * cst.NN_H (ver)))
+    f = cp.Variable ((2 * cst.NN_H (ver)))
 
     prob = cp.Problem (
-        cp.Minimize (b.T @ x),
-        [x >= 0,
-            c @ x <= gamma,
-            cp.norm (aa @ x -est.y_rep, 2) <= b @ x])
+        cp.Minimize (cp.quad_form (g, qq) - k.T @ g + i.T @ f),
+        [g - f <= 0,
+            - g - f <= 0])
 
     try:
-        prob.solve (solver = cp.ECOS)
-        est.g_rep_hat = (x.value) [0 : nn] - (x.value) [nn : 2*nn]
+        prob.solve (solver = cp.SCS)
+        #prob.solve (
+        #    solver = cp.ECOS,
+        #    max_iters = cst.ITER_MAX_CVX (),
+        #    abstol = cst.TOLERANCE_ABS_CVX (),
+        #    reltol = cst.TOLERANCE_REL_CVX ())
+        est.g_rep_hat = g.value
     except cp.error.SolverError:
         print ("Lasso fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
@@ -253,26 +257,30 @@ def ddss_direct (est, gamma, ver):
 
 def ddss_llpp (est, gamma, ver):
     est.refresh ()
-    nn = 2 * cst.NN_H (ver)
-    zz = np.zeros ((nn, nn))
-    i = np.block ([np.zeros ((nn)), np.ones ((nn))])
-    k = np.block (
-        [est.pp_rep.T @ est.y_rep - gamma * np.ones ((nn)),
-            -est.pp_rep.T @ est.y_rep - gamma * np.ones ((nn))])
-    aa = np.block ([[np.eye (nn), np.eye (nn)], [-np.eye (nn), np.eye (nn)], [zz, np.eye (nn)]])
-    cc = np.block ([[est.pp_rep.T @ est.pp_rep, zz], [-est.pp_rep.T @ est.pp_rep, zz]])
-    aa = sp.sparse.coo_matrix (aa)
-    cc = sp.sparse.coo_matrix (cc)
-    x = cp.Variable (2 * nn)
+    i = np.ones ((2 * cst.NN_H (ver)))
+    k = est.pp_rep.T @ est.y_rep
+    qq = est.pp_rep.T @ est.pp_rep
+
+    g = cp.Variable ((2 * cst.NN_H (ver)))
+    f = cp.Variable ((2 * cst.NN_H (ver)))
+    t = cp.Variable (1)
 
     prob = cp.Problem (
-        cp.Minimize (i.T @ x),
-        [aa @ x >= 0,
-            cc @ x >= k])
+        cp.Minimize (i.T @ f + gamma * t),
+        [g - f <= 0,
+            - g - f <= 0,
+            qq @ g - t * i <= k,
+            - qq @ g - t * i <= - k])
 
     try:
-        prob.solve (solver = cp.CVXOPT)
-        est.g_rep_hat = (x.value) [0 : nn]
+        #prob.solve (solver = cp.GLPK, glpk = {'msg_lev': 'GLP_MSG_OFF'})
+        prob.solve (solver = cp.SCS)
+        #prob.solve (
+        #    solver = cp.ECOS,
+        #    max_iters = cst.ITER_MAX_CVX (),
+        #    abstol = cst.TOLERANCE_ABS_CVX (),
+        #    reltol = cst.TOLERANCE_REL_CVX ())
+        est.g_rep_hat = g.value
     except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
