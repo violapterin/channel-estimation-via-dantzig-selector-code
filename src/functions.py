@@ -48,7 +48,7 @@ def execute (ver):
         lst_method.append (lambda x, y: ddss_theory (x, y, ver))
         for c_0 in multiple_values (cst.NUM_GAMMA_DS (ver)):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c_0 + "$\sigma$")
-            lst_method.append (lambda x, y, c = c_0: ddss_llpp (x, c * y, ver))
+            lst_method.append (lambda x, y, c = c_0: ddss_llpp_2 (x, c * y, ver))
 
     assert (len (lst_method) == len (lst_legend))
     num_method = len (lst_method)
@@ -67,10 +67,10 @@ def execute (ver):
         norm_hh = 0
         for _ in range (cst.NUM_REPEAT (ver)):
             count_prog += 1
-            ff_bb = pick_ff_bb (ver)
-            ff_rr = pick_ff_rr (ver)
-            ww_bb = pick_ww_bb (ver)
-            ww_rr = pick_ww_rr (ver)
+            ff_bb = pick_mat_bb (ver).T
+            ff_rr = pick_mat_rr (ver).T
+            ww_bb = pick_mat_bb (ver)
+            ww_rr = pick_mat_rr (ver)
             hh = pick_hh (ver)
             zz = pick_zz (ver)
             kk = get_kk (ver)
@@ -255,11 +255,17 @@ def ddss_direct (est, gamma, ver):
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
-def ddss_llpp (est, gamma, ver):
+def ddss_llpp_1 (est, gamma, ver):
     est.refresh ()
     i = np.ones ((2 * cst.NN_H (ver)))
     k = est.pp_rep.T @ est.y_rep
     qq = est.pp_rep.T @ est.pp_rep
+
+    #d = np.linalg.norm (qq)
+    #qq /= d
+    #i /= d
+    #k /= d
+    #gamma /= d
 
     g = cp.Variable ((2 * cst.NN_H (ver)))
     f = cp.Variable ((2 * cst.NN_H (ver)))
@@ -274,17 +280,60 @@ def ddss_llpp (est, gamma, ver):
 
     try:
         #prob.solve (solver = cp.GLPK, glpk = {'msg_lev': 'GLP_MSG_OFF'})
-        prob.solve (solver = cp.SCS)
+        prob.solve (solver = cp.ECOS)
         #prob.solve (
         #    solver = cp.ECOS,
         #    max_iters = cst.ITER_MAX_CVX (),
         #    abstol = cst.TOLERANCE_ABS_CVX (),
         #    reltol = cst.TOLERANCE_REL_CVX ())
+
+        #est.g_rep_hat = d * g.value
         est.g_rep_hat = g.value
     except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
+
+def ddss_llpp_2 (est, gamma, ver):
+    est.refresh ()
+    i = np.ones ((2 * cst.NN_H (ver)))
+    k = est.pp_rep.T @ est.y_rep
+    qq = est.pp_rep.T @ est.pp_rep
+
+    #d = np.linalg.norm (qq)
+    #qq /= d
+    #i /= d
+    #k /= d
+    #gamma /= d
+
+    u = cp.Variable ((2 * cst.NN_H (ver)))
+    v = cp.Variable ((2 * cst.NN_H (ver)))
+    t = cp.Variable (1)
+
+    prob = cp.Problem (
+        cp.Minimize (i.T @ u + i.T @ v + gamma * t),
+        [- t <= 0,
+            - u <= 0,
+            - v <= 0,
+            qq @ u - qq @ v - t * i <= k,
+            - qq @ u + qq @ v - t * i <= -k])
+
+    try:
+        #prob.solve (solver = cp.GLPK, glpk = {'msg_lev': 'GLP_MSG_OFF'})
+        prob.solve (solver = cp.ECOS)
+        #prob.solve (
+        #    solver = cp.ECOS,
+        #    max_iters = cst.ITER_MAX_CVX (),
+        #    abstol = cst.TOLERANCE_ABS_CVX (),
+        #    reltol = cst.TOLERANCE_REL_CVX ())
+
+        #est.g_rep_hat = d * (u.value - v.value)
+        est.g_rep_hat = u.value - v.value
+    except cp.error.SolverError:
+        print ("Dantzig Selector fails to solve the program!", flush = True)
+        est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
+    est.convert ()
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -390,23 +439,15 @@ def mat_complex_normal (nn_1, nn_2):
 def pick_zz (ver):
     return mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver))
 
-def pick_ff_bb (ver):
-    return (mat_complex_normal (cst.NN_RR (ver), cst.NN_YY (ver))
-    / np.sqrt (cst.NN_YY (ver)))
+def pick_mat_bb (ver):
+    return (mat_complex_normal (cst.NN_YY (ver), cst.NN_RR (ver)) / np.sqrt (cst.NN_YY (ver)))
+    #return (mat_complex_normal (cst.NN_YY (ver), cst.NN_RR (ver)))
 
-def pick_ww_bb (ver):
-    return (mat_complex_normal (cst.NN_YY (ver), cst.NN_RR (ver))
-    / np.sqrt (cst.NN_YY (ver)))
-
-def pick_ff_rr (ver):
-    kk = get_kk (ver)
-    kk_ss = kk [:, random.sample (list (range (cst.NN_HH(ver))), cst.NN_RR(ver))]
-    return kk_ss / np.sqrt (cst.NN_RR (ver))
-
-def pick_ww_rr (ver):
-    kk = get_kk (ver)
+def pick_mat_rr (ver):
+    kk = np.sqrt (cst.NN_HH (ver)) * get_kk (ver)
     kk_ss = kk [random.sample (list (range (cst.NN_HH(ver))), cst.NN_RR(ver)), :]
     return kk_ss / np.sqrt (cst.NN_RR (ver))
+    #return kk_ss
 
 def pick_hh (ver):
     ret =np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype=complex)
