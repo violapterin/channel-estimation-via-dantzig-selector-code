@@ -60,7 +60,7 @@ def NUM_REPEAT (ver):
         cls.Size.BIG : 64}
     return switcher [ver.size]
 
-def NUM_ETA (ver): # OMP
+def NUM_E_G (ver): # OMP
     if (ver.focus == cls.Focus.OOMMPP):
         return 3
     elif (ver.focus == cls.Focus.ASSORTED):
@@ -68,7 +68,7 @@ def NUM_ETA (ver): # OMP
     else: # cls.Focus.DDSS
         return 0
 
-def NUM_GAMMA_DS (ver): # DS
+def NUM_G_G_DS (ver): # DS
     if (ver.focus == cls.Focus.DDSS):
         return 3
     elif (ver.focus == cls.Focus.ASSORTED):
@@ -85,15 +85,15 @@ def EPSILON ():
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def GAMMA_DDSS (ver):
+def G_G_DDSS (ver):
     return 2 * np.sqrt (np.log (NN_HH (ver)))
 
-def GAMMA_LASSO (ver): # just copying `GAMMA_DDSS`
+def G_G_LASSO (ver): # just copying `G_G_DDSS`
     return 2 * np.sqrt (np.log (NN_HH (ver)))
 
-def ETA_OOMMPP_2_NORM (ver):
+def H_G_OOMMPP_2_NORM (ver):
     return np.sqrt (3) * NN_YY (ver)
 
-def ETA_OOMMPP_INFTY_NORM (ver):
+def H_G_OOMMPP_INFTY_NORM (ver):
     return 2 * np.sqrt (np.log (NN_HH (ver)))
 

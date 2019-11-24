@@ -21,7 +21,7 @@ def execute (ver):
         lst_method.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso_qqpp (x, cst.GAMMA_LASSO (ver) * y, ver))
+        lst_method.append (lambda x, y: lasso_qqpp (x, cst.G_G_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
@@ -29,24 +29,24 @@ def execute (ver):
         lst_method.append (lambda x, y:
                 oommpp_fixed_times (x, cst.LL (), ver))
         # Orthogonal Matching Pursuit: limited l-2 norm
-        for c_0 in multiple_values (cst.NUM_ETA (ver)):
+        for c_0 in multiple_values (cst.NUM_E_G (ver)):
             lst_legend.append ("OMP, $l_2$-norm, $\eta$ = " + '%.2f' % c_0 + "$\sigma$")
 
             lst_method.append (
                 lambda x, y, c = c_0:
-                oommpp_2_norm (x, c * cst.ETA_OOMMPP_2_NORM (ver) * y, ver))
+                oommpp_2_norm (x, c * cst.H_G_OOMMPP_2_NORM (ver) * y, ver))
         # Orthogonal Matching Pursuit: limited l-infinity norm
-        for c_0 in multiple_values (cst.NUM_ETA (ver)):
+        for c_0 in multiple_values (cst.NUM_E_G (ver)):
             lst_legend.append ("OMP, $l_\infty$-norm, $\eta$ = " + '%.2f' % c_0 + "$\sigma$")
             lst_method.append (
                 lambda x, y, c = c_0:
-                oommpp_infty_norm (x, c * cst.ETA_OOMMPP_INFTY_NORM (ver) * y, ver))
+                oommpp_infty_norm (x, c * cst.H_G_OOMMPP_INFTY_NORM (ver) * y, ver))
 
     # Dantzig Selector error bound
     if (ver.focus == cls.Focus.DDSS or ver.focus == cls.Focus.ASSORTED):
         lst_legend.append ("DS, theory")
         lst_method.append (lambda x, y: ddss_theory (x, y, ver))
-        for c_0 in multiple_values (cst.NUM_GAMMA_DS (ver)):
+        for c_0 in multiple_values (cst.NUM_G_G_DS (ver)):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c_0 + "$\sigma$")
             lst_method.append (lambda x, y, c = c_0: ddss_llpp_2 (x, c * y, ver))
 
@@ -187,13 +187,13 @@ def llss (est, ver):
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def lasso_direct (est, gamma, ver):
+def lasso_direct (est, g_g, ver):
     est.refresh ()
     g = cp.Variable (2 * cst.NN_H (ver))
 
     prob = cp.Problem (
         cp.Minimize (cp.norm (est.pp_rep @ g - est.y_rep, 2)),
-        [cp.norm (g, 1) <= gamma])
+        [cp.norm (g, 1) <= g_g])
 
     try:
         prob.solve (solver = cp.ECOS)
@@ -203,10 +203,10 @@ def lasso_direct (est, gamma, ver):
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
-def lasso_qqpp (est, gamma, ver):
+def lasso_qqpp (est, g_g, ver):
     est.refresh ()
     nn = 2 * cst.NN_H (ver)
-    i = 2 * gamma * np.ones ((2 * cst.NN_H (ver)))
+    i = 2 * g_g * np.ones ((2 * cst.NN_H (ver)))
     k = 2 * est.pp_rep.T @ est.y_rep
     qq = est.pp_rep.T @ est.pp_rep
     g = cp.Variable ((2 * cst.NN_H (ver)))
@@ -238,14 +238,14 @@ def ddss_theory (est, sigma, ver):
             3.29 * np.log (cst.NN_HH (ver))
             + 4.56 * (np.log (cst.NN_HH (ver)) ** (3/2)))
 
-def ddss_direct (est, gamma, ver):
+def ddss_direct (est, g_g, ver):
     est.refresh ()
     g = cp.Variable (2 * cst.NN_H (ver))
 
     prob = cp.Problem (
         cp.Minimize (cp.norm (g, 1)),
         [cp.norm (est.pp_rep.T @ (est.y_rep - est.pp_rep @ g), "inf")
-            <= gamma])
+            <= g_g])
 
     try:
         prob.solve (solver = cp.ECOS)
@@ -255,7 +255,7 @@ def ddss_direct (est, gamma, ver):
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
-def ddss_llpp_1 (est, gamma, ver):
+def ddss_llpp_1 (est, g_g, ver):
     est.refresh ()
     i = np.ones ((2 * cst.NN_H (ver)))
     k = est.pp_rep.T @ est.y_rep
@@ -265,14 +265,14 @@ def ddss_llpp_1 (est, gamma, ver):
     #qq /= d
     #i /= d
     #k /= d
-    #gamma /= d
+    #g_g /= d
 
     g = cp.Variable ((2 * cst.NN_H (ver)))
     f = cp.Variable ((2 * cst.NN_H (ver)))
     t = cp.Variable (1)
 
     prob = cp.Problem (
-        cp.Minimize (i.T @ f + gamma * t),
+        cp.Minimize (i.T @ f + g_g * t),
         [g - f <= 0,
             - g - f <= 0,
             qq @ g - t * i <= k,
@@ -294,32 +294,50 @@ def ddss_llpp_1 (est, gamma, ver):
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
 
-def ddss_llpp_2 (est, gamma, ver):
+def ddss_llpp_2 (est, g_g, ver):
+    nn_p = 2 * cst.NN_H (ver)
+    nn_m = 2 * cst.NN_Y (ver)
     est.refresh ()
-    i = np.ones ((2 * cst.NN_H (ver)))
-    k = est.pp_rep.T @ est.y_rep
-    qq = est.pp_rep.T @ est.pp_rep
+    c = np.ones ((nn_p))
+    d, qq = np.linalg.eigh (est.pp_rep.T @ est.pp_rep)
+    k = est.pp_rep.T @ est.y_rep + g_g
+    k1 = g_g * qq.T @ c + qq.T @ est.pp_rep.T @ est.y_rep
+    k2 = g_g * qq.T @ c - qq.T @ est.pp_rep.T @ est.y_rep
 
-    #d = np.linalg.norm (qq)
-    #qq /= d
-    #i /= d
-    #k /= d
-    #gamma /= d
+    idx_mag = np.argsort (abs (d))
+    bb = np.sort (idx_mag [0 : nn_p - nn_m]).tolist ()
+    aa = [i for i in range (nn_p) if i not in bb]
+    dd_aa = np.diag (d [aa])
+    k1_aa = np.array ([k1 [i] for i in aa])
+    k1_bb = np.array ([k1 [i] for i in bb])
+    k2_aa = np.array ([k2 [i] for i in aa])
+    k2_bb = np.array ([k2 [i] for i in bb])
+    qq_aa = qq [:, aa]
+    qq_bb = qq [:, bb]
+    qq_t_c_aa = (qq.T @ c) [aa]
 
-    u = cp.Variable ((2 * cst.NN_H (ver)))
-    v = cp.Variable ((2 * cst.NN_H (ver)))
-    t = cp.Variable (1)
+    #print (d[aa])
+    #print (d[bb])
+
+    xp_bb = cp.Variable (nn_p)
+    xm_bb = cp.Variable (nn_p)
+    yp_aa = cp.Variable (nn_m)
+    ym_aa = cp.Variable (nn_m)
+    s1_aa = cp.Variable (nn_m)
+    s2_aa = cp.Variable (nn_m)
 
     prob = cp.Problem (
-        cp.Minimize (i.T @ u + i.T @ v + gamma * t),
-        [- t <= 0,
-            - u <= 0,
-            - v <= 0,
-            qq @ u - qq @ v - t * i <= k,
-            - qq @ u + qq @ v - t * i <= -k])
+        cp.Minimize (
+            qq_t_c_aa @ yp_aa + c @ xp_bb +
+            qq_t_c_aa @ ym_aa + c @ xm_bb),
+        [dd_aa @ yp_aa - dd_aa @ ym_aa + s1_aa == k1_aa,
+            - dd_aa @ yp_aa + dd_aa @ ym_aa + s2_aa == k2_aa,
+            - qq_aa @ yp_aa - xp_bb <= 0,
+            - qq_aa @ ym_aa - xm_bb <= 0,
+            - qq_aa @ s1_aa - qq_bb @ k1_bb <= 0,
+            - qq_aa @ s2_aa - qq_bb @ k2_bb <= 0])
 
     try:
-        #prob.solve (solver = cp.GLPK, glpk = {'msg_lev': 'GLP_MSG_OFF'})
         prob.solve (solver = cp.ECOS)
         #prob.solve (
         #    solver = cp.ECOS,
@@ -327,13 +345,11 @@ def ddss_llpp_2 (est, gamma, ver):
         #    abstol = cst.TOLERANCE_ABS_CVX (),
         #    reltol = cst.TOLERANCE_REL_CVX ())
 
-        #est.g_rep_hat = d * (u.value - v.value)
-        est.g_rep_hat = u.value - v.value
+        est.g_rep_hat = qq_aa @ yp_aa.value + xp_bb.value - qq_aa @ ym_aa.value - xm_bb.value
     except cp.error.SolverError:
         print ("Dantzig Selector fails to solve the program!", flush = True)
         est.g_rep_hat = np.linalg.pinv (est.pp_rep) @ est.y_rep
     est.convert ()
-
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

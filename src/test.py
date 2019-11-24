@@ -8,34 +8,44 @@ import cvxpy as cp
 import time
 from enum import Enum
 
-import constants as cst
-import classes as cls
-import functions as fct
-import random
+#import constants as cst
+#import classes as cls
+#import functions as fct
+#import random
 
-def foo (a):
-    a += 1
-    print (a)
+nn_m = 2
+nn_p = 5
+pp = np.random.normal (size=(nn_m, nn_p))
+d, qq = np.linalg.eigh (pp.T @ pp)
+idx_mag = np.argsort (abs (d))
+bb = np.sort (idx_mag [0 : nn_p - nn_m]).tolist ()
+aa = [i for i in range (nn_p) if i not in bb]
+d_aa = d [aa]
+d_bb = d [bb]
+qq_aa = qq [:, aa]
+qq_bb = qq [:, bb]
+print (qq_aa)
+print (qq_bb)
 
-def mask_low (arr):
-    arr = arr+0.01
-    s =arr.shape
-    num_supp = int (np.sqrt (s[0] * s[1])) + 1
-    arr_abs = abs(arr)
-    arr_vec = fct.vectorize (arr)
-    arr_abs_vec = fct.vectorize (arr_abs)
-    idx_mag = np.argpartition (arr_abs_vec, num_supp)
-    idx_low = idx_mag [0:1-num_supp]
-    arr_vec [idx_low] = 0
-    arr = arr_vec
-    arr = fct.inv_vectorize (arr_vec, s [0], s [1])
-    return arr
+quit ()
+
+nn_m = 3
+d = np.array ([4, 3, -100, -6, 7])
+k = np.array ([-123, 9, 7, -8, 0])
+idx_mag = np.argsort (abs (d))
+aa = np.sort (idx_mag [0 : nn_m]).tolist ()
+bb = [i for i in range (len (d)) if i not in aa]
+#d_aa = np.array ([d[i] for i in aa])
+d_aa = d [aa]
+d_bb = np.array ([d[i] for i in bb])
+k_aa = np.array ([k[i] for i in aa])
+k_bb = np.array ([k[i] for i in bb])
+cc = np.ones ((5,5))
+
+print (d_aa)
+print (cc [:, aa])
 
 
-a = 3
-foo (a)
-foo (a)
-print (a)
 quit ()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -88,3 +98,18 @@ for _ in range (mm):
 print ("time: ", (t2-t1)/mm)
 
 quit ()
+
+def mask_low (arr):
+    sh =arr.shape
+    num_supp = int (np.sqrt (sh [0] * sh [1])) + 1
+    arr_abs = abs(arr)
+    arr_vec = fct.vectorize (arr)
+    arr_abs_vec = fct.vectorize (arr_abs)
+    idx_mag = np.argpartition (arr_abs_vec, num_supp)
+    idx_low = idx_mag [0:1-num_supp]
+    arr_vec [idx_low] = 0
+    arr = arr_vec
+    arr = fct.inv_vectorize (arr_vec, s [0], s [1])
+    return arr
+
+
