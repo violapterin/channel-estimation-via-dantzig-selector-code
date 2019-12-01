@@ -16,17 +16,8 @@ def LL ():
 def VALUE_SPACING ():
     return 2
 
-def NUM_SIGMA ():
-    return 7
-
-def ITER_MAX_CVX ():
-    return 48
-
-def TOLERANCE_ABS_CVX ():
-    return 1e-4
-
-def TOLERANCE_REL_CVX ():
-    return 1e-3
+def NUM_S_G ():
+    return 9
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -55,9 +46,9 @@ def NN_H (ver):
 def NUM_REPEAT (ver):
     switcher = {
         cls.Size.TEST : 16,
-        cls.Size.SMALL : 64,
-        cls.Size.MEDIUM : 64,
-        cls.Size.BIG : 64}
+        cls.Size.SMALL : 48,
+        cls.Size.MEDIUM : 48,
+        cls.Size.BIG : 48}
     return switcher [ver.size]
 
 def NUM_E_G (ver): # OMP
@@ -79,16 +70,12 @@ def NUM_G_G_DS (ver): # DS
 def ITER_MAX_OOMMPP (ver):
     return 4 * NN_HH (ver)
 
-# To avoid division by zero.
-def EPSILON ():
-    return 10 ** (-12)
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def G_G_DDSS (ver):
     return 2 * np.sqrt (np.log (NN_HH (ver)))
 
-def G_G_LASSO (ver): # just copying `G_G_DDSS`
+def G_G_LASSO (ver): # same as `G_G_DDSS`
     return 2 * np.sqrt (np.log (NN_HH (ver)))
 
 def H_G_OOMMPP_2_NORM (ver):
