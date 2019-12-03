@@ -1,23 +1,35 @@
 import numpy as np
 import classes as cls
 
-def NUM_GRID_PHASE ():
+def NUM_GRID_PHASE (ver):
     return 16
 
-def LAMBDA_ANT ():
+def LAMBDA_ANT (ver):
     return 1
 
-def DIST_ANT ():
+def DIST_ANT (ver):
     return 3
 
-def LL ():
+def LL (ver):
     return 4
 
-def VALUE_SPACING ():
-    return 2
+def VALUE_SPACING (ver):
+    return 2 * np.sqrt(2)
 
-def NUM_S_G ():
-    return 9
+def NUM_S_G (ver):
+    return 7
+
+def NUM_REP_LLSS (ver):
+    return 16
+
+def NUM_REP_LASSO (ver):
+    return 3
+
+def NUM_REP_DDSS (ver):
+    return 3
+
+def NUM_REP_OOMMPP (ver):
+    return 64
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -43,13 +55,8 @@ def NN_H (ver):
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def NUM_REPEAT (ver):
-    switcher = {
-        cls.Size.TEST : 16,
-        cls.Size.SMALL : 48,
-        cls.Size.MEDIUM : 48,
-        cls.Size.BIG : 48}
-    return switcher [ver.size]
+def NUM_REP_CHA (ver):
+    return 8
 
 def NUM_E_G (ver): # OMP
     if (ver.focus == cls.Focus.OOMMPP):
@@ -71,6 +78,9 @@ def ITER_MAX_OOMMPP (ver):
     return 4 * NN_HH (ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+def S_G_INIT (ver):
+    return 2 ** (-3)
 
 def G_G_DDSS (ver):
     return 2 * np.sqrt (np.log (NN_HH (ver)))

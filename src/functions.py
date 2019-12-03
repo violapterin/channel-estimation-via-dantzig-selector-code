@@ -11,59 +11,67 @@ import cvxpy as cp
 
 
 def execute (ver):
-    arr_s_g = multiple_values (cst.NUM_S_G ())
+    arr_s_g = list (cst.S_G_INIT (ver) * np.array (multiple_values (cst.NUM_S_G (ver), ver)))
     lst_legend = []
-    lst_method = [] # arguments: (estimation, s_g)
+    lst_num_rep_met = []
+    lst_met = [] # arguments: (estimation, s_g)
 
     if (ver.focus == cls.Focus.ASSORTED):
         # Least Square
         lst_legend.append ("LS")
-        lst_method.append (lambda x, y: llss (x, ver))
+        lst_num_rep_met.append (cst.NUM_REP_LLSS (ver))
+        lst_met.append (lambda x, y: llss (x, ver))
         # Lasso
         lst_legend.append ("Lasso")
-        lst_method.append (lambda x, y: lasso_qqpp (x, cst.G_G_LASSO (ver) * y, ver))
+        lst_num_rep_met.append (cst.NUM_REP_LASSO (ver))
+        lst_met.append (lambda x, y: lasso_qqpp (x, cst.G_G_LASSO (ver) * y, ver))
 
     if (ver.focus == cls.Focus.OOMMPP or ver.focus == cls.Focus.ASSORTED):
         # Orthogonal Matching Pursuit: fixed iteration number
         lst_legend.append ("OMP, $L$ times")
-        lst_method.append (lambda x, y: oommpp_fixed_times (x, cst.LL (), ver))
+        lst_num_rep_met.append (cst.NUM_REP_OOMMPP (ver))
+        lst_met.append (lambda x, y: oommpp_fixed_times (x, cst.NN_H (ver), ver))
         # Orthogonal Matching Pursuit: limited l-2 norm
-        for c in multiple_values (cst.NUM_E_G (ver)):
+        for c in multiple_values (cst.NUM_E_G (ver), ver):
             lst_legend.append ("OMP, $l_2$-norm, $\eta$ = " + '%.2f' % c + "$\sigma$")
-            lst_method.append (
+            lst_num_rep_met.append (cst.NUM_REP_OOMMPP (ver))
+            lst_met.append (
                 lambda x, y, c = c:
                 oommpp_2_norm (x, c * cst.H_G_OOMMPP_2_NORM (ver) * y, ver))
         # Orthogonal Matching Pursuit: limited l-infinity norm
-        for c in multiple_values (cst.NUM_E_G (ver)):
+        for c in multiple_values (cst.NUM_E_G (ver), ver):
             lst_legend.append ("OMP, $l_\infty$-norm, $\eta$ = " + '%.2f' % c + "$\sigma$")
-            lst_method.append (
+            lst_num_rep_met.append (cst.NUM_REP_OOMMPP (ver))
+            lst_met.append (
                 lambda x, y, c = c:
                 oommpp_infty_norm (x, c * cst.H_G_OOMMPP_INFTY_NORM (ver) * y, ver))
 
     # Dantzig Selector error bound
     if (ver.focus == cls.Focus.DDSS or ver.focus == cls.Focus.ASSORTED):
         lst_legend.append ("DS, theory")
-        lst_method.append (lambda x, y: ddss_theory (x, y, ver))
-        for c in multiple_values (cst.NUM_G_G_DS (ver)):
+        lst_num_rep_met.append (1)
+        lst_met.append (lambda x, y: ddss_theory (x, y, ver))
+        for c in multiple_values (cst.NUM_G_G_DS (ver), ver):
             lst_legend.append ("DS, $\gamma$ = " + '%.2f' % c + "$\sigma$")
-            lst_method.append (lambda x, y, c = c: ddss_llpp_2 (x, c * y, ver))
+            lst_num_rep_met.append (cst.NUM_REP_DDSS (ver))
+            lst_met.append (lambda x, y, c = c: ddss_llpp_2 (x, c * y, ver))
 
-    assert (len (lst_method) == len (lst_legend))
-    num_method = len (lst_method)
+    assert (len (lst_met) == len (lst_legend))
+    num_met = len (lst_met)
 
     count_prog = 0
-    lst_lst_err_abs = [] # each s_g, each method
-    lst_lst_err_rel = [] # each s_g, each method
-    lst_lst_time = [] # each s_g, each method
+    lst_lst_err_abs = [] # each s_g, each met
+    lst_lst_err_rel = [] # each s_g, each met
+    lst_lst_time = [] # each s_g, each met
 
-    time_tot_start = time.time()
-    for i_s_g in range (cst.NUM_S_G ()):
+    time_tot_start = time.time ()
+    for i_s_g in range (cst.NUM_S_G (ver)):
         s_g = arr_s_g [i_s_g]
         print ("σ = ", '%.2f' % s_g, " :", sep = '')
-        lst_err_abs = [0] * num_method
-        lst_time = [0] * num_method
+        lst_err_abs = [0] * num_met
+        lst_time = [0] * num_met
         norm_hh = 0
-        for _ in range (cst.NUM_REPEAT (ver)):
+        for _ in range (cst.NUM_REP_CHA (ver)):
             count_prog += 1
             ff_bb = pick_mat_bb (ver).T
             ff_rr = pick_mat_rr (ver).T
@@ -72,11 +80,11 @@ def execute (ver):
             hh = pick_hh (ver)
             zz = pick_zz (ver)
             kk = get_kk (ver)
-            gg = kk.conj().T @ hh @ kk
+            gg = kk.conj ().T @ hh @ kk
             norm_hh += np.log (np.linalg.norm (hh, ord=2))
 
             pp = np.kron (
-                ff_bb.T @ ff_rr.T @ kk.conj(),
+                ff_bb.T @ ff_rr.T @ kk.conj (),
                 ww_bb @ ww_rr @ kk)
             g = vectorize (gg)
             z = vectorize (zz)
@@ -85,15 +93,18 @@ def execute (ver):
             y_rep = find_rep_vec (y)
             est = cls.Estimation (pp_rep, y_rep, hh, ver)
 
-            for i in range (num_method):
+            for i in range (num_met):
                 est.refresh ()
-                time_each_start = time.time ()
-                lst_method [i] (est, s_g)
-                time_each_stop = time.time ()
-                lst_time [i] += np.log ((time_each_stop - time_each_start) / 60)
-                lst_err_abs [i] += np.log (est.d)
+                num_rep_met = lst_num_rep_met [i]
+                for _ in range (num_rep_met):
+                    time_each_start = time.time ()
+                    lst_met [i] (est, s_g)
+                    time_each_stop = time.time ()
+                    diff_time = (time_each_stop - time_each_start) / 60
+                    lst_time [i] += np.log (diff_time) / num_rep_met
+                    lst_err_abs [i] += np.log (est.d) / num_rep_met
 
-            rate_progress = count_prog / (cst.NUM_S_G () * cst.NUM_REPEAT (ver))
+            rate_progress = count_prog / (cst.NUM_S_G (ver) * cst.NUM_REP_CHA (ver))
             time_hold = time.time ()
             # Use `end = '\r\r'` to force carriage to return to line start
             print (
@@ -105,10 +116,10 @@ def execute (ver):
                     (time_hold - time_tot_start) * (1 - rate_progress) / (rate_progress * 60)),
                 " min. remaining)",
                 sep = '', flush = True)
-        lst_err_abs = list (np.array (lst_err_abs) / cst.NUM_REPEAT (ver))
-        norm_hh /= cst.NUM_REPEAT (ver)
+        lst_err_abs = list (np.array (lst_err_abs) / cst.NUM_REP_CHA (ver))
+        norm_hh /= cst.NUM_REP_CHA (ver)
         lst_err_rel = list (np.array (lst_err_abs) / norm_hh)
-        lst_time = list (np.array (lst_time) / cst.NUM_REPEAT (ver))
+        lst_time = list (np.array (lst_time) / cst.NUM_REP_CHA (ver))
         lst_lst_err_abs.append (lst_err_abs)
         lst_lst_err_rel.append (lst_err_rel)
         lst_lst_time.append (lst_time)
@@ -119,7 +130,7 @@ def execute (ver):
     print (
         "averaged time elapsed for each experiment: ",
         '%.2f' %
-            ((time_tot_stop - time_tot_start) / (60 * cst.NUM_S_G () * cst.NUM_REPEAT (ver))),
+            ((time_tot_stop - time_tot_start) / (60 * cst.NUM_S_G (ver) * cst.NUM_REP_CHA (ver))),
         " (min)", flush = True)
     print (
         "total time elapsed: ",
@@ -127,7 +138,7 @@ def execute (ver):
         " (min)", flush = True)
 
     arr_x = np.array (np.log (arr_s_g))
-    lst_lst_err_abs = list (np.array (lst_lst_err_abs).T) # each method, each s_g
+    lst_lst_err_abs = list (np.array (lst_lst_err_abs).T) # each met, each s_g
     lst_arr_err_abs = [np.array (lst) for lst in lst_lst_err_abs]
     label_x = "Std. of Noise (Log)"
     label_y = "Absolute 2-Norm error (Log)"
@@ -140,7 +151,7 @@ def execute (ver):
         "Absolute", ver)
 
     arr_x = np.array (np.log (arr_s_g))
-    lst_lst_err_rel = list (np.array (lst_lst_err_rel).T) # each method, each s_g
+    lst_lst_err_rel = list (np.array (lst_lst_err_rel).T) # each met, each s_g
     lst_arr_err_rel = [np.array (lst) for lst in lst_lst_err_rel]
     label_x = "Std. of Noise (Log)"
     label_y = "Relative 2-Norm error"
@@ -149,11 +160,12 @@ def execute (ver):
         label_x, label_y, lst_legend,
         "Relative", ver)
     save_plot (
-        arr_s_g, lst_arr_err_rel,
+        arr_x, lst_arr_err_rel,
         label_x, label_y, lst_legend,
         "Relative", ver)
 
-    lst_lst_time = list (np.array (lst_lst_time).T) # each method, each s_g
+    arr_x = np.array (np.log (arr_s_g))
+    lst_lst_time = list (np.array (lst_lst_time).T) # each met, each s_g
     # Don't plot the DS theory's time usage (this must be plotted last).
     if "DS, theory" in lst_legend:
         hold_idx = lst_legend.index("DS, theory")
@@ -163,11 +175,11 @@ def execute (ver):
     label_x = "Std. of Noise (Log)"
     label_y = "Time in minute (Log)"
     save_table (
-        arr_s_g, lst_arr_time,
+        arr_x, lst_arr_time,
         label_x, label_y, lst_legend,
         "Time", ver)
     save_plot (
-        arr_s_g, lst_arr_time,
+        arr_x, lst_arr_time,
         label_x, label_y, lst_legend,
         "Time", ver)
 
@@ -225,7 +237,7 @@ def lasso_qqpp (est, g_g, ver):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def ddss_theory (est, s_g, ver):
-    est.d = s_g * (cst.LL () ** (1/2)) * (
+    est.d = s_g * (cst.LL (ver) ** (1/2)) * (
             3.29 * np.log (cst.NN_HH (ver))
             + 4.56 * (np.log (cst.NN_HH (ver)) ** (3/2)))
 
@@ -262,7 +274,6 @@ def ddss_llpp_1 (est, g_g, ver):
             - qq @ g - t * i <= - k])
 
     try:
-        #prob.solve (solver = cp.GLPK, glpk = {'msg_lev': 'GLP_MSG_OFF'})
         prob.solve (solver = cp.ECOS)
 
         est.g_rep_hat = g.value
@@ -280,7 +291,7 @@ def ddss_llpp_2 (est, g_g, ver):
     k2 = g_g * qq.T @ c - qq.T @ est.pp_rep.T @ est.y_rep
 
     idx_mag = np.argsort (abs (d))
-    bb = np.sort (idx_mag [0 : nn_p - nn_m]).tolist ()
+    bb = list (np.sort (idx_mag [0 : nn_p - nn_m]))
     aa = [i for i in range (nn_p) if i not in bb]
     dd_aa = np.diag (d [aa])
     k1_aa = k1 [aa]
@@ -310,6 +321,7 @@ def ddss_llpp_2 (est, g_g, ver):
             - qq_aa @ s2_aa - qq_bb @ k2_bb <= 0])
 
     try:
+        #prob.solve (solver = cp.GLPK, glpk = {'msg_lev': 'GLP_MSG_OFF'})
         prob.solve (solver = cp.ECOS)
         est.g_rep_hat = qq_aa @ yp_aa.value + xp_bb.value - qq_aa @ ym_aa.value - xm_bb.value
     except cp.error.SolverError:
@@ -407,8 +419,8 @@ def oommpp_infty_norm (est, h_g, ver):
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def multiple_values (n):
-    return list (cst.VALUE_SPACING () ** (np.array (range (n))))
+def multiple_values (n, ver):
+    return list (cst.VALUE_SPACING (ver) ** (np.array (range (n))))
 
 def mat_complex_normal (nn_1, nn_2):
     return ((np.random.normal (0, 1, (nn_1, nn_2))
@@ -418,34 +430,37 @@ def pick_zz (ver):
     return mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver))
 
 def pick_mat_bb (ver):
-    np.random.seed (0) # XXX
     return (mat_complex_normal (cst.NN_YY (ver), cst.NN_RR (ver)) / np.sqrt (cst.NN_YY (ver)))
 
 def pick_mat_rr (ver):
-    np.random.seed (0) # XXX
     kk = np.sqrt (cst.NN_HH (ver)) * get_kk (ver)
-    kk_ss = kk [random.sample (list (range (cst.NN_HH(ver))), cst.NN_RR(ver)), :]
-    return kk_ss / np.sqrt (cst.NN_RR (ver))
+    kk_ss = kk [random.sample (list (range (cst.NN_HH (ver))), cst.NN_RR (ver)), :]
+    for n_1 in range (cst.NN_RR (ver)):
+        for n_2 in range (cst.NN_HH (ver)):
+            arg = np.angle (kk_ss [n_1] [n_2])
+            scale = cst.NUM_GRID_PHASE (ver) / (2 * np.pi)
+            arg = np.round (scale * arg) / scale
+            kk_ss [n_1] [n_2] = np.exp (1J * arg)
+            return kk_ss / np.sqrt (cst.NN_RR (ver))
 
 def pick_hh (ver):
-    np.random.seed (0) # XXX
-    ret =np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype=complex)
-    for _ in range (cst.LL ()):
-        alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL ())
-            + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL ()))
-        phi = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
+    ret = np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype=complex)
+    for _ in range (cst.LL (ver)):
+        alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver))
+            + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver)))
+        phi = (2 * np.pi * (cst.DIST_ANT (ver) /cst.LAMBDA_ANT (ver))
             * np.sin (np.random.uniform (0, 2 * np.pi)))
-        theta = (2 * np.pi * (cst.DIST_ANT () /cst.LAMBDA_ANT ())
+        theta = (2 * np.pi * (cst.DIST_ANT (ver) /cst.LAMBDA_ANT (ver))
             * np.sin (np.random.uniform (0, 2 * np.pi)))
         ret += alpha * np.outer (arr_resp (phi, ver), arr_resp (theta, ver))
     return ret
 
 def get_kk (ver): # DFT matrix
     ret = np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype=complex)
-    for i in range (cst.NN_HH (ver)):
-        for j in range (cst.NN_HH (ver)):
-            ret [i] [j] = ((1 / np.sqrt (cst.NN_HH (ver)))
-                * np.exp (2 * np.pi * 1J * i * j / cst.NN_HH (ver)))
+    for n_1 in range (cst.NN_HH (ver)):
+        for n_2 in range (cst.NN_HH (ver)):
+            ret [n_1] [n_2] = ((1 / np.sqrt (cst.NN_HH (ver)))
+                * np.exp (2 * np.pi * 1J * n_1 * n_2 / cst.NN_HH (ver)))
     return ret
 
 def arr_resp (t, ver):
@@ -531,18 +546,18 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
     width_line = 2
 
     assert (len (lst_arr_y) == len (lst_legend))
-    for i_method in range (len (lst_arr_y)):
-        arr_y = lst_arr_y [i_method]
+    for i_met in range (len (lst_arr_y)):
+        arr_y = lst_arr_y [i_met]
         assert (len (arr_x) == len (arr_y))
         plt.plot (
             arr_x,
             arr_y,
             markersize = size_marker,
             linewidth = width_line,
-            linestyle = lst_style [int (i_method % num_style)],
-            color = lst_color [int (i_method % num_color)],
-            marker = lst_marker [int (i_method % num_marker)],
-            label = lst_legend [i_method])
+            linestyle = lst_style [int (i_met % num_style)],
+            color = lst_color [int (i_met % num_color)],
+            marker = lst_marker [int (i_met % num_marker)],
+            label = lst_legend [i_met])
     plt.legend (
         bbox_to_anchor = (1.05, 1),
         loc = 'upper left',
