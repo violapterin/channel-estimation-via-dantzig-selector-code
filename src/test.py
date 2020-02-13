@@ -13,15 +13,24 @@ import classes as cls
 import functions as fct
 import random
 
+def mask (arr, threshold):
+    s = np.argsort (np.abs (arr))
+    num_mask = int (np.round (len (arr) * threshold))
+    for i in s [:num_mask]:
+        arr [i]=0
 
+a = np.random.randint (-20, 20, size = 10)
+print (a)
+mask (a, 0.3)
+print (a)
 
-a = np.random.normal (0, 1) + 1J * np.random.normal (0, 1)
-a = a / np.abs (a)
-arg = np.angle (a)
-scale = 32 / (2 * np.pi)
-arg = np.round (scale * arg) / scale
-b = np.exp (1J * arg)
-print (b - a)
+quit ()
+
+print (a)
+b = np.argsort (np.abs (a))
+l = int (np.round (len (a)/2))
+for i in b[:l]:
+    a [i]=0
 
 quit ()
 
@@ -46,12 +55,6 @@ for _ in range (nn_iter):
     z = np.random.normal (0, 1, (nn_m))
     pp = np.random.normal (0, 1, (nn_m, nn_p))
     y = pp @ g + z
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-    d_llss = np.linalg.pinv (pp) @ y - g
-    #print (d_llss)
-    e_tot_llss += np.linalg.norm (d_llss)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -107,17 +110,6 @@ for _ in range (nn_iter):
     d_ddss_dia = g - g_hat
     #print (d_ddss_dia)
     e_tot_ddss_dia += np.linalg.norm (d_ddss_dia)
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-e_tot_llss /= nn_iter
-e_tot_ddss_dir /= nn_iter
-e_tot_ddss_dia /= nn_iter
-print ("LS    : ", e_tot_llss)
-print ("DS dir: ", e_tot_ddss_dir)
-print ("DS dia: ", e_tot_ddss_dia)
-
-quit ()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -198,39 +190,3 @@ prob.solve ()
 print (np.linalg.norm (g_hat.value))
 
 quit ()
-
-nn_m = 2
-nn_p = 5
-pp = np.random.normal (size=(nn_m, nn_p))
-d, qq = np.linalg.eigh (pp.T @ pp)
-idx_mag = np.argsort (abs (d))
-bb = np.sort (idx_mag [0 : nn_p - nn_m]).tolist ()
-aa = [i for i in range (nn_p) if i not in bb]
-d_aa = d [aa]
-d_bb = d [bb]
-qq_aa = qq [:, aa]
-qq_bb = qq [:, bb]
-print (np.linalg.norm (qq @ np.diag (d) @ qq.T - pp.T @ pp))
-
-quit ()
-
-nn_m = 3
-d = np.array ([4, 3, -100, -6, 7])
-k = np.array ([-123, 9, 7, -8, 0])
-idx_mag = np.argsort (abs (d))
-aa = np.sort (idx_mag [0 : nn_m]).tolist ()
-bb = [i for i in range (len (d)) if i not in aa]
-#d_aa = np.array ([d[i] for i in aa])
-d_aa = d [aa]
-d_bb = np.array ([d[i] for i in bb])
-k_aa = np.array ([k[i] for i in aa])
-k_bb = np.array ([k[i] for i in bb])
-cc = np.ones ((5,5))
-
-print (d_aa)
-print (cc [:, aa])
-
-
-quit ()
-
-

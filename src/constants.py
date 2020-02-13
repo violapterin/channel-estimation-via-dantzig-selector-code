@@ -31,6 +31,9 @@ def NUM_REP_DDSS (ver):
 def NUM_REP_OOMMPP (ver):
     return 64
 
+def THRESHOLD_MASK (ver):
+    return 0.1
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def NN_HH (ver):

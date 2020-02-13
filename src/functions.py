@@ -78,16 +78,17 @@ def execute (ver):
             ww_bb = pick_mat_bb (ver)
             ww_rr = pick_mat_rr (ver)
             hh = pick_hh (ver)
+            norm_hh += np.log (np.linalg.norm (hh, ord=2))
             zz = pick_zz (ver)
             kk = get_kk (ver)
             gg = kk.conj ().T @ hh @ kk
-            norm_hh += np.log (np.linalg.norm (hh, ord=2))
 
+            g = vectorize (gg)
+            mask (g, cst.THRESHOLD_MASK ())
+            z = vectorize (zz)
             pp = np.kron (
                 ff_bb.T @ ff_rr.T @ kk.conj (),
                 ww_bb @ ww_rr @ kk)
-            g = vectorize (gg)
-            z = vectorize (zz)
             y = pp @ g + (s_g / np.sqrt(2)) * z
             pp_rep = find_rep_mat (pp)
             y_rep = find_rep_vec (y)
@@ -508,6 +509,12 @@ def vectorize (v):
 def inv_vectorize (v, nn_1, nn_2):
     assert (len (v) == nn_1 * nn_2)
     return np.reshape (v, (nn_1, -1))
+
+def mask (arr, threshold):
+    s = np.argsort (np.abs (arr))
+    num_mask = int (np.round (len (arr) * threshold))
+    for i in s [:num_mask]:
+        arr [i]=0
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
