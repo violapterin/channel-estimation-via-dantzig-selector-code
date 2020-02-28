@@ -1,6 +1,6 @@
 import numpy as np
-import sys
 from enum import Enum
+import sys
 
 import constants as cst
 import functions as fct
@@ -17,7 +17,7 @@ class Estimation:
         self.hh_hat = np.zeros ((cst.NN_HH (self.ver), cst.NN_HH (self.ver)), dtype = complex)
         self.d = 0
 
-    def refresh (self):
+    def zero (self):
         self.g_rep_hat = np.zeros (2 * (cst.NN_H (self.ver)))
         self.g_hat = np.zeros ((cst.NN_H (self.ver)), dtype = complex)
         self.gg_hat = np.zeros ((cst.NN_HH (self.ver), cst.NN_HH (self.ver)), dtype = complex)
@@ -28,7 +28,7 @@ class Estimation:
         self.g_hat = fct.inv_find_rep_vec (self.g_rep_hat)
         self.gg_hat = fct.inv_vectorize (self.g_hat, cst.NN_HH (self.ver), cst.NN_HH (self.ver))
         self.hh_hat = (fct.get_kk (self.ver) @ self.gg_hat @ fct.get_kk (self.ver).conj().T)
-        self.d = np.linalg.norm (self.hh_hat - self.hh, ord='fro')
+        self.d = np.linalg.norm (self.hh_hat - self.hh, ord = 'fro')
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
