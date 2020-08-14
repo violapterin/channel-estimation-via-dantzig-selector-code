@@ -57,14 +57,14 @@ def execute (ver):
         lst_num_rep_meth.append (cst.NUM_REP_DDSS (ver))
         lst_meth.append (lambda x, y: ddss_theory (x, y, ver))
 
-        # Dantzig Selector: Linear Program
+        # Dantzig Selector: Linear Prog_r_am
         #for g_g in lst_g_g:
         #    lst_legend.append ("DS, $\gamma$ = " + '%.2f' % g_g + "$\sigma$")
         #    lst_num_rep_meth.append (cst.NUM_REP_DDSS (ver))
         #    lst_meth.append (lambda x, y, g_g = g_g: ddss_llpp (x, g_g * y, ver))
         #lst_num_rep_meth.append (cst.NUM_REP_DDSS (ver))
 
-        # Dantzig Selector: Linear Program, twice
+        # Dantzig Selector: Linear Prog_r_am, twice
         for g_g in lst_g_g:
             lst_legend.append ("DS twice, $\gamma$ = " + '%.2f' % g_g + "$\sigma$")
             lst_num_rep_meth.append (cst.NUM_REP_DDSS (ver))
@@ -212,11 +212,11 @@ def execute (ver):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def llss (est, ver):
-    pp_rep = find_rep_mat (est.pp)
-    y_rep = find_rep_vec (est.y)
+    pp_r = find_rep_mat (est.pp)
+    y_r = find_rep_vec (est.y)
     try:
-        pp_rep_inv = np.linalg.pinv (pp_rep)
-        est.g_rep_hat = pp_rep_inv @ y_rep
+        pp_r_inv = np.linalg.pinv (pp_r)
+        est.g_r_h = pp_r_inv @ y_r
     except np.linalg.LinAlgError as err:
         print ("Least Square fails "
                 "because Moore-Penrose inverse does not exist!", flush = True)
@@ -228,20 +228,20 @@ def llss (est, ver):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def lasso_qqpp (est, g_g, ver):
-    pp_rep = find_rep_mat (est.pp)
-    y_rep = find_rep_vec (est.y)
+    pp_r = find_rep_mat (est.pp)
+    y_r = find_rep_vec (est.y)
     nn = 2 * cst.NN_H (ver)
     c = np.ones ((nn))
-    k = - 2 * pp_rep.T @ y_rep
-    qq = pp_rep.T @ pp_rep
-    g_rep = cp.Variable ((nn))
-    g_rep_abs = cp.Variable ((nn))
+    k = - 2 * pp_r.T @ y_r
+    qq = pp_r.T @ pp_r
+    g_r = cp.Variable ((nn))
+    g_r_abs = cp.Variable ((nn))
 
     prob = cp.Problem (
-        cp.Minimize ((1/nn) * (cp.quad_form (g_rep, qq) + k.T @ g_rep)),
-        [g_rep - g_rep_abs <= 0,
-            - g_rep - g_rep_abs <= 0,
-            c.T @ g_rep_abs <= g_g])
+        cp.Minimize ((1/nn) * (cp.quad_form (g_r, qq) + k.T @ g_r)),
+        [g_r - g_r_abs <= 0,
+            - g_r - g_r_abs <= 0,
+            c.T @ g_r_abs <= g_g])
 
     try:
         prob.solve (solver = cp.ECOS,
@@ -249,12 +249,12 @@ def lasso_qqpp (est, g_g, ver):
             abstol = cst.CVX_TOL_ABS (ver),
             reltol = cst.CVX_TOL_REL (ver),
             feastol = cst.CVX_TOL_FEAS (ver))
-        est.g_rep_hat = g_rep.value
+        est.g_r_h = g_r.value
     except (cp.error.SolverError, cp.error.DCPError) as err:
         print ("Lasso fails "
-                "when solving the convex program!", flush = True)
+                "when solving the convex prog_r_am!", flush = True)
         print (err)
-        est.g_rep_hat = np.linalg.pinv (pp_rep) @ y_rep
+        est.g_r_h = np.linalg.pinv (pp_r) @ y_r
 
     est.convert ()
 
@@ -268,22 +268,22 @@ def ddss_theory (est, s_g, ver):
     est.find_ddss_theory (s_g)
 
 def ddss_llpp (est, g_g, ver):
-    pp_rep = find_rep_mat (est.pp)
-    y_rep = find_rep_vec (est.y)
+    pp_r = find_rep_mat (est.pp)
+    y_r = find_rep_vec (est.y)
 
     nn = 2 * cst.NN_H (ver)
 
-    g_rep = cp.Variable (nn)
-    g_rep_abs = cp.Variable (nn)
-    k = pp_rep.T @ y_rep
-    qq = pp_rep.T @ pp_rep
+    g_r = cp.Variable (nn)
+    g_r_abs = cp.Variable (nn)
+    k = pp_r.T @ y_r
+    qq = pp_r.T @ pp_r
     c = np.ones ((nn))
 
-    prob = cp.Problem (cp.Minimize (c.T @ g_rep_abs),
-        [g_rep - g_rep_abs <= 0,
-            - g_rep - g_rep_abs <= 0,
-            qq @ g_rep - g_g * c <= k,
-            - qq @ g_rep - g_g * c <= - k])
+    prob = cp.Problem (cp.Minimize (c.T @ g_r_abs),
+        [g_r - g_r_abs <= 0,
+            - g_r - g_r_abs <= 0,
+            qq @ g_r - g_g * c <= k,
+            - qq @ g_r - g_g * c <= - k])
 
     try:
         #prob.solve (solver = cp.ECOS)
@@ -292,36 +292,43 @@ def ddss_llpp (est, g_g, ver):
             abstol = cst.CVX_TOL_ABS (ver),
             reltol = cst.CVX_TOL_REL (ver),
             feastol = cst.CVX_TOL_FEAS (ver))
-        est.g_rep_hat = g_rep.value
+        est.g_r_h = g_r.value
     except (cp.error.SolverError, cp.error.DCPError) as err:
         print ("Dantzig Selector fails "
-                "when solving the convex program!", flush = True)
+                "when solving the convex prog_r_am!", flush = True)
         print (err)
-        est.g_rep_hat = np.linalg.pinv (pp_rep) @ y_rep
+        est.g_r_h = np.linalg.pinv (pp_r) @ y_r
 
     est.convert ()
 
 def ddss_llpp_twice (est, g_g, ver):
-    pp_rep = find_rep_mat (est.pp)
-    y_rep = find_rep_vec (est.y)
+    # XXX
+    kk = get_kk (ver)
+    gr = find_rep_vec (vectorize (kk.conj ().T @ est.hh @ kk))
+
+    pp_r = find_rep_mat (est.pp)
+    y_r = find_rep_vec (est.y)
 
     nn_0 = 2 * cst.NN_H (ver)
-    nn_2 = int (2 * np.sqrt (np.log (cst.NN_HH (ver))))
-    #nn_2 = 2 * cst.NN_HH (ver)
-    nn_1 = int ((nn_2 * nn_0) ** (1/2))
-    #nn_1 = int ((nn_2 + nn_0) / 2)
+    nn_2 = 2 * cst.NN_HH (ver)
+    nn_1 = int (nn_0 ** (1/2) * nn_2 ** (1/2))
 
-    g_rep = cp.Variable (nn_0)
-    g_rep_abs = cp.Variable (nn_0)
-    k = pp_rep.T @ y_rep
-    qq = pp_rep.T @ pp_rep
+    #nn_0 = 2 * cst.NN_H (ver)
+    #nn_2 = 2 * int (min (np.log (cst.NN_HH (ver)), cst.NN_HH (ver)))
+    #nn_1 = int (nn_0 ** (1/2) * nn_2 ** (1/2))
+
+    g_r = cp.Variable (nn_0)
+    g_r_a = cp.Variable (nn_0)
+    k = pp_r.T @ y_r
+    qq = pp_r.T @ pp_r
     c = np.ones ((nn_0))
+    g_g_0 = g_g
 
-    prob = cp.Problem (cp.Minimize (c.T @ g_rep_abs),
-        [g_rep - g_rep_abs <= 0,
-            - g_rep - g_rep_abs <= 0,
-            qq @ g_rep - g_g * c <= k,
-            - qq @ g_rep - g_g * c <= - k])
+    prob = cp.Problem (cp.Minimize (c.T @ g_r_a),
+        [g_r - g_r_a <= 0,
+            - g_r - g_r_a <= 0,
+            qq @ g_r - g_g_0 * c <= k,
+            - qq @ g_r - g_g_0 * c <= - k])
 
     try:
         #prob.solve (solver = cp.ECOS)
@@ -330,29 +337,31 @@ def ddss_llpp_twice (est, g_g, ver):
             abstol = cst.CVX_TOL_ABS (ver),
             reltol = cst.CVX_TOL_REL (ver),
             feastol = cst.CVX_TOL_FEAS (ver))
-        g_rep_hat_0 = g_rep.value
+        g_r_h_0 = g_r.value
     except (cp.error.SolverError, cp.error.DCPError) as err:
         print ("Dantzig Selector fails "
-                "when solving the convex program!", flush = True)
+                "when solving the convex prog_r_am!", flush = True)
         print (err)
-        g_rep_hat_0 = np.linalg.pinv (pp_rep) @ y_rep
+        g_r_h_0 = np.linalg.pinv (pp_r) @ y_r
+
 
     # DS, DS
-    ss_est_1 = np.sort (np.argsort (np.abs (g_rep_hat_0)) [-nn_1:])
-    pp_rep_1 = pp_rep [:, ss_est_1]
+    ss_est_1 = np.sort (np.argsort (np.abs (g_r_h_0)) [-nn_1:])
+    pp_r_1 = pp_r [:, ss_est_1]
 
-    g_rep = cp.Variable (nn_1)
-    g_rep_abs = cp.Variable (nn_1)
-    k = pp_rep_1.T @ y_rep
-    qq = pp_rep_1.T @ pp_rep_1
+    g_r = cp.Variable (nn_1)
+    g_r_a = cp.Variable (nn_1)
+    k = pp_r_1.T @ y_r
+    qq = pp_r_1.T @ pp_r_1
     c = np.ones ((nn_1))
+    g_g_1 = (np.log (nn_1) / np.log (nn_0)) * g_g_0
 
     prob = cp.Problem (
-        cp.Minimize (c.T @ g_rep_abs),
-        [g_rep - g_rep_abs <= 0,
-            - g_rep - g_rep_abs <= 0,
-            qq @ g_rep - g_g * c <= k,
-            - qq @ g_rep - g_g * c <= - k])
+        cp.Minimize (c.T @ g_r_a),
+        [g_r - g_r_a <= 0,
+            - g_r - g_r_a <= 0,
+            qq @ g_r - g_g_1 * c <= k,
+            - qq @ g_r - g_g_1 * c <= - k])
 
     try:
         #prob.solve (solver = cp.ECOS)
@@ -360,138 +369,172 @@ def ddss_llpp_twice (est, g_g, ver):
             max_iters = cst.CVX_ITER_MAX (ver),
             abstol = cst.CVX_TOL_ABS (ver),
             reltol = cst.CVX_TOL_REL (ver))
-        g_rep_hat_ss_1 = g_rep.value
+        g_r_h_ss_1 = g_r.value
     except (cp.error.SolverError, cp.error.DCPError) as err:
         print ("Dantzig Selector fails "
-                "when solving the convex program!", flush = True)
+                "when solving the convex prog_r_am!", flush = True)
         print (err)
-        est.g_rep_hat = np.linalg.pinv (pp_rep) @ y_rep
+        est.g_r_h = np.linalg.pinv (pp_r) @ y_r
 
-    g_rep_hat_1 = np.zeros ((nn_0))
+    g_r_h_1 = np.zeros ((nn_0))
     for i in range (nn_1):
-        g_rep_hat_1 [ss_est_1 [i]] = g_rep_hat_ss_1 [i]
+        g_r_h_1 [ss_est_1 [i]] = g_r_h_ss_1 [i]
 
     # DS, DS, LS
-    ss_est_2 = np.sort (np.argsort (np.abs (g_rep_hat_1)) [-nn_2:])
-    pp_rep_2 = pp_rep [:, ss_est_2]
+    ss_est_2 = np.sort (np.argsort (np.abs (g_r_h_1)) [-nn_2:])
+    pp_r_2 = pp_r [:, ss_est_2]
 
-    g_rep_hat_ss_2 = np.linalg.pinv (pp_rep_2) @ y_rep
-    g_rep_hat_2 = np.zeros ((nn_0))
+    g_r_h_ss_2 = np.linalg.pinv (pp_r_2) @ y_r
+    g_r_h_2 = np.zeros ((nn_0))
     for i in range (nn_2):
-        g_rep_hat_2 [ss_est_2 [i]] = g_rep_hat_ss_2 [i]
+        g_r_h_2 [ss_est_2 [i]] = g_r_h_ss_2 [i]
 
-    est.g_rep_hat = g_rep_hat_2
+    est.g_r_h = g_r_h_2
     est.convert ()
+
+    # XXX
+    g_r_a = np.abs (gr)
+    g_r_h_a_0 = np.abs (g_r_h_0)
+    g_r_h_a_1 = np.abs (g_r_h_1)
+    g_r_h_a_2 = np.abs (g_r_h_2)
+    g_r_a_s, g_r_h_a_0_s, g_r_h_a_1_s, g_r_h_a_2_s = map (
+            list, zip (*sorted (zip (
+                g_r_a, g_r_h_a_0, g_r_h_a_1, g_r_h_a_2),
+            reverse = True)))
+    sc = np.array (list (range (nn_0)))
+
+    plt.plot(sc, g_r_a_s, 
+        marker = 'o', # circle
+        color = 'k', # black
+        markersize = 2, linestyle = "None")
+    plt.plot(sc, g_r_h_a_0_s,
+        color = 'b', # blue
+        marker = 'v', # triangle down
+        markersize = 5, linestyle = "None")
+    plt.plot(sc, g_r_h_a_1_s,
+        marker = 's', # square
+        color = 'g', # green
+        markersize = 5, linestyle = "None")
+    plt.plot(sc, g_r_h_a_2_s,
+        marker = 'D', # diamond
+        color = 'r', # red
+        markersize = 2, linestyle = "None")
+    nam_fil = "../tmp/" + str(est.cnt_each).zfill(4) + ".png"
+    plt.savefig (nam_fil)
+    plt.close ()
+    # XXX
+
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def oommpp_fixed_times (est, times, ver):
-    pp_rep = find_rep_mat (est.pp)
-    y_rep = find_rep_vec (est.y)
+    pp_r = find_rep_mat (est.pp)
+    y_r = find_rep_vec (est.y)
     est.zero ()
-    r = y_rep # remainder
+    r = y_r # remainder
     tt = range (cst.NN_H (ver)) # list of column indices
     ss = [] # extracted column indices
     count_iter = 0
-    pp_rep_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+    pp_r_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
     while True:
         count_iter += 1
-        lst_match = [abs (pp_rep [:, i].T @ r) for i in tt]
+        lst_match = [abs (pp_r [:, i].T @ r) for i in tt]
         s = np.argmax (lst_match)
         ss.append (s)
         ss = list (sorted (set (ss)))
-        pp_rep_ss = pp_rep [:, ss]
+        pp_r_ss = pp_r [:, ss]
 
         try:
-            pp_rep_ss_inv = np.linalg.pinv (pp_rep_ss)
+            pp_r_ss_inv = np.linalg.pinv (pp_r_ss)
         except np.linalg.LinAlgError as err:
             print ("Orthogonal mathcing pursuit fails when estimating support "
                     "because Moore-Penrose inverse does not exist!", flush = True)
             print (err)
-            est.g_rep_hat = np.linalg.pinv (pp_rep) @ y_rep
+            est.g_r_h = np.linalg.pinv (pp_r) @ y_r
             est.convert ()
             return
 
-        r = y_rep - pp_rep_ss @ pp_rep_ss_inv @ y_rep
+        r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
         if (count_iter >= times):
             break
-    g_rep_hat_ss = pp_rep_ss_inv @ y_rep
+    g_r_h_ss = pp_r_ss_inv @ y_r
     for i in range (len(ss)):
-        est.g_rep_hat [ss [i]] = g_rep_hat_ss [i] 
+        est.g_r_h [ss [i]] = g_r_h_ss [i] 
 
     est.convert ()
 
 def oommpp_2_norm (est, h_g, ver):
-    pp_rep = find_rep_mat (est.pp)
-    y_rep = find_rep_vec (est.y)
+    pp_r = find_rep_mat (est.pp)
+    y_r = find_rep_vec (est.y)
     est.zero ()
-    r = y_rep # remained vector
+    r = y_r # remained vector
     tt = range (cst.NN_H (ver)) # list of column indices
     ss = [] # extracted column indices
     count_iter = 0
-    pp_rep_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+    pp_r_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
     while True:
         count_iter += 1
-        lst_match = [abs (pp_rep [:, i].T @ r) for i in tt]
+        lst_match = [abs (pp_r [:, i].T @ r) for i in tt]
         s = np.argmax (lst_match)
         ss.append (s)
         ss = list (sorted (set (ss)))
-        pp_rep_ss = pp_rep [:, ss]
+        pp_r_ss = pp_r [:, ss]
 
         try:
-            pp_rep_ss_inv = np.linalg.pinv (pp_rep_ss)
+            pp_r_ss_inv = np.linalg.pinv (pp_r_ss)
         except np.linalg.LinAlgError as err:
             print ("Orthogonal mathcing pursuit fails when estimating support "
                     "because Moore-Penrose inverse does not exist!", flush = True)
             print (err)
-            est.g_rep_hat = np.linalg.pinv (pp_rep) @ y_rep
+            est.g_r_h = np.linalg.pinv (pp_r) @ y_r
             est.convert ()
             return
 
-        r = y_rep - pp_rep_ss @ pp_rep_ss_inv @ y_rep
+        r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
         if (np.linalg.norm (r, ord = 2) <= h_g
             or (count_iter >= cst.ITER_MAX_OOMMPP (ver))):
             break
-    g_rep_hat_ss = pp_rep_ss_inv @ y_rep
+    g_r_h_ss = pp_r_ss_inv @ y_r
     for i in range (len(ss)):
-        est.g_rep_hat [ss [i]] = g_rep_hat_ss [i]
+        est.g_r_h [ss [i]] = g_r_h_ss [i]
 
     est.convert ()
 
 def oommpp_infty_norm (est, h_g, ver):
-    pp_rep = find_rep_mat (est.pp)
-    y_rep = find_rep_vec (est.y)
+    pp_r = find_rep_mat (est.pp)
+    y_r = find_rep_vec (est.y)
     est.zero ()
-    r = y_rep # remainder
+    r = y_r # remainder
     tt = range (cst.NN_H (ver)) # list of column indices
     ss = [] # extracted column indices
     count_iter = 0
-    pp_rep_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+    pp_r_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
     while True:
         count_iter += 1
-        lst_match = [abs (pp_rep [:, i].T @ r) for i in tt]
+        lst_match = [abs (pp_r [:, i].T @ r) for i in tt]
         s = np.argmax (lst_match)
         ss.append (s)
         ss = list (sorted (set (ss)))
-        pp_rep_ss = pp_rep [:, ss]
+        pp_r_ss = pp_r [:, ss]
 
         try:
-            pp_rep_ss_inv = np.linalg.pinv (pp_rep_ss)
+            pp_r_ss_inv = np.linalg.pinv (pp_r_ss)
         except np.linalg.LinAlgError as err:
             print ("Orthogonal mathcing pursuit fails when estimating support "
                     "because Moore-Penrose inverse does not exist!", flush = True)
             print (err)
-            est.g_rep_hat = np.linalg.pinv (pp_rep) @ y_rep
+            est.g_r_h = np.linalg.pinv (pp_r) @ y_r
             est.convert ()
             return
 
-        r = y_rep - pp_rep_ss @ pp_rep_ss_inv @ y_rep
-        if (np.linalg.norm (pp_rep.T @ r, ord = np.inf) <= h_g
+        r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
+        if (np.linalg.norm (pp_r.T @ r, ord = np.inf) <= h_g
             or count_iter >= cst.ITER_MAX_OOMMPP (ver)):
             break
-    g_rep_hat_ss = pp_rep_ss_inv @ y_rep
+    g_r_h_ss = pp_r_ss_inv @ y_r
     for i in range (len (ss)):
-        est.g_rep_hat [ss [i]] = g_rep_hat_ss [i]
+        est.g_r_h [ss [i]] = g_r_h_ss [i]
 
     est.convert ()
 
@@ -499,7 +542,7 @@ def oommpp_infty_norm (est, h_g, ver):
 
 def mat_complex_normal (nn_1, nn_2):
     return ((np.random.normal (0, 1, (nn_1, nn_2))
-        +1J * np.random.normal (0, 1, (nn_1, nn_2))))
+        + 1J * np.random.normal (0, 1, (nn_1, nn_2))))
 
 def pick_zz (ver):
     return mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver))
@@ -581,18 +624,19 @@ def inv_vectorize (v, nn_1, nn_2):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
-    full_title = title + ", "
     switcher_focus = {
         cls.Focus.OOMMPP: "OMP",
         cls.Focus.DDSS: "DS",
         cls.Focus.ASSORTED: "assorted"}
-    full_title = full_title + switcher_focus [ver.focus] + ", "
     switcher_size = {
-        cls.Size.TEST: "test",
+        cls.Size.VERY_SMALL: "very-small",
         cls.Size.SMALL: "small",
         cls.Size.MEDIUM: "medium",
-        cls.Size.BIG: "big"}
-    full_title = full_title + switcher_size [ver.size]
+        cls.Size.BIG: "big",
+        cls.Size.VERY_BIG: "very-big"}
+    full_title = (switcher_focus [ver.focus] + "-" + 
+                    switcher_size [ver.size] + "-" +
+                    title + "-" + ver.iden + ".png")
 
     plt.close ("all")
     plt.title (full_title, fontsize = 15)
@@ -632,19 +676,6 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
         loc = 'upper left',
         borderaxespad = 0.)
 
-    full_title = title
-    switcher_size = {
-        cls.Size.TEST: "test",
-        cls.Size.SMALL: "small",
-        cls.Size.MEDIUM: "medium",
-        cls.Size.BIG: "big"}
-    full_title = switcher_size [ver.size] + "-" + full_title
-    switcher_focus = {
-        cls.Focus.OOMMPP: "oommpp",
-        cls.Focus.DDSS: "ddss",
-        cls.Focus.ASSORTED: "assorted"}
-    full_title = switcher_focus [ver.focus] + "-" + full_title + ".png"
-
     os.system ("mkdir -p ../plt") # To create new directory only if nonexistent
     path_plot_out = (
         os.path.abspath (os.path.join (os.getcwd (), os.path.pardir))
@@ -655,19 +686,20 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
     plt.close ()
 
 def save_table (arr_x, lst_arr_y, label_x, label_y, lst_legend, title, ver):
-    full_title = title + "-"
     switcher_focus = {
         cls.Focus.OOMMPP: "OMP",
         cls.Focus.DDSS: "DS",
         cls.Focus.ASSORTED: "assorted"}
-    full_title = full_title + switcher_focus [ver.focus] + "-"
     switcher_size = {
-        cls.Size.TEST: "test",
+        cls.Size.VERY_SMALL: "very-small",
         cls.Size.SMALL: "small",
         cls.Size.MEDIUM: "medium",
-        cls.Size.BIG: "big"}
-    full_title = full_title + switcher_size [ver.size] + ".txt"
-    full_title = (full_title.replace (" ", "-"))
+        cls.Size.BIG: "big",
+        cls.Size.VERY_BIG: "very-big"}
+    full_title = (switcher_focus [ver.focus] + "-" + 
+                    switcher_size [ver.size] + "-" +
+                    title + "-" + ver.iden + ".txt")
+    #full_title = (full_title.replace (" ", "-"))
 
     os.system ("mkdir -p ../dat") # To create new directory only if nonexistent
     path_table_out = (

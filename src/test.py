@@ -19,18 +19,22 @@ def test_alpha ():
     nn_y = nn_yy ** 2
     nn_h = nn_hh ** 2
     ll = 4
-    num_rep = 12
-    card_ss_true = 2 * nn_yy # rep.
-    card_ss_est_1 = int ((card_ss_true * nn_h) ** (1/2))
-    card_ss_est_2 = card_ss_true
+    num_rep = 6
+    crd_true = int (np.sqrt (nn_y))
+    crd_rep_true = 2 * nn_y # rep.
+    crd_rep_0 = 2 * nn_h
+    crd_rep_est_2 = crd_rep_true
+    c_decay = 2 ^ (-6)
+    #crd_est_1 = (crd_est_0 * crd_est_2) ** (1/2)
+    crd_rep_est_1 = int ((crd_rep_0 + crd_rep_est_2) / 2)
     s_g = 0.2
     scale = list (range (nn_h))
 
     os.system ("rm -r ../tmp")
     os.system ("mkdir ../tmp")
 
-    for i in range (num_rep):
-        print ("experiment:", i)
+    for i_exp in range (num_rep):
+        print ("experiment:", i_exp)
         pp = (np.random.normal (0, 1, (nn_y, nn_h))
                 + 1J * np.random.normal (0, 1, (nn_y, nn_h)))
         pp /= np.sqrt (nn_y/np.sqrt(2))
@@ -51,7 +55,15 @@ def test_alpha ():
                 np.array ([np.exp (1J * i * theta) for i in range (nn_hh)]))
         hh = kk @ hh @ kk.conj().T
         h = fct.vectorize (hh)
-
+        
+        #h = np.zeros ((nn_h), dtype = complex)
+        #for i in range (crd_true):
+        #    h [i] = c_decay ** (i / crd_true)
+        #h /= np.linalg.norm (h)
+        #h = np.random.permutation (h)
+        #for i in range (nn_h):
+        #    tmp_ph = 2 * np.pi * np.random.uniform ()
+        #    h [i] *= np.exp (1J * tmp_ph)
 
         z = np.random.normal (0, s_g, (nn_y)) + 1J * np.random.normal (0, s_g, (nn_y))
         y = pp @ h + z
@@ -99,7 +111,8 @@ def test_alpha ():
         plt.plot(sc, h_hat_abs_ddss_sort,
             marker = 's', # square
             markersize = 4, linestyle = "None")
-        nam_fil = "../tmp/" + str(i).zfill(4) + ".png"
+        nam_fil = "../tmp/" + str(i_exp).zfill(4) + ".png"
+        print ("   ", nam_fil)
         plt.savefig (nam_fil)
         plt.close ()
 
@@ -112,8 +125,8 @@ def test_beta ():
     nn_y = nn_yy ** 2
     nn_h = nn_hh ** 2
     ll = 4
-    card_ss_est_2 = 2 * nn_yy
-    card_ss_est_1 = int ((card_ss_est_2 * 2 * nn_h) ** (1/2))
+    crd_est_2 = 2 * nn_yy
+    crd_est_1 = int ((crd_est_2 * 2 * nn_h) ** (1/2))
     s_g = 0.2
 
     err_rel_llss = 0
@@ -180,15 +193,15 @@ def test_beta ():
         err_rel_ddss += np.linalg.norm (hh - hh_hat_ddss, ord='fro') / norm_hh
 
         # DS, DS
-        ss_est_1 = np.sort (np.argsort (np.abs (h_rep_hat_1)) [-card_ss_est_1:])
+        ss_est_1 = np.sort (np.argsort (np.abs (h_rep_hat_1)) [-crd_rep_est_1:])
         pp_rep_1 = pp_rep [:, ss_est_1]
 
-        h_rep = cp.Variable (card_ss_est_1)
-        h_rep_abs = cp.Variable (card_ss_est_1)
+        h_rep = cp.Variable (crd_rep_est_1)
+        h_rep_abs = cp.Variable (crd_rep_est_1)
         k = pp_rep_1.T @ y_rep
         qq = pp_rep_1.T @ pp_rep_1
-        c = np.ones ((card_ss_est_1))
-        g_g = np.sqrt (2 * np.log (card_ss_est_1)) * s_g
+        c = np.ones ((crd_rep_est_1))
+        g_g = np.sqrt (2 * np.log (crd_rep_est_1)) * s_g
 
         prob = cp.Problem (
             cp.Minimize (c.T @ h_rep_abs),
@@ -200,19 +213,19 @@ def test_beta ():
         prob.solve (solver = cp.ECOS)
         h_rep_hat_ss_2 = h_rep.value
         h_rep_hat_2 = np.zeros ((2 * nn_h))
-        for i in range (card_ss_est_1):
+        for i in range (crd_est_1):
             h_rep_hat_2 [ss_est_1 [i]] = h_rep_hat_ss_2 [i]
         h_hat_ddss_ddss = fct.inv_find_rep_vec (h_rep_hat_2)
         hh_hat_ddss_ddss = fct.inv_vectorize (h_hat_ddss_ddss, nn_hh, nn_hh)
         err_rel_ddss_ddss += np.linalg.norm (hh - hh_hat_ddss_ddss, ord='fro') / norm_hh
 
         # DS, DS, LS
-        ss_est_2 = np.sort (np.argsort (np.abs (h_rep_hat_2)) [-card_ss_est_2:])
+        ss_est_2 = np.sort (np.argsort (np.abs (h_rep_hat_2)) [-crd_est_2:])
         pp_rep_2 = pp_rep [:, ss_est_2]
 
         h_rep_hat_ss_3 = np.linalg.pinv (pp_rep_2) @ y_rep
         h_rep_hat_3 = np.zeros ((2 * nn_h))
-        for i in range (card_ss_est_2):
+        for i in range (crd_est_2):
             h_rep_hat_3 [ss_est_2 [i]] = h_rep_hat_ss_3 [i]
         h_hat_ddss_ddss_llss = fct.inv_find_rep_vec (h_rep_hat_3)
         hh_hat_ddss_ddss_llss = fct.inv_vectorize (h_hat_ddss_ddss_llss, nn_hh, nn_hh)
@@ -230,6 +243,7 @@ def test_beta ():
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 
 test_alpha ()
 

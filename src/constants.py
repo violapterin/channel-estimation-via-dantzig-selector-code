@@ -3,10 +3,12 @@ import classes as cls
 
 def NN_HH (ver):
     switcher = {
-        cls.Size.TEST : 8,
-        cls.Size.SMALL : 16,
-        cls.Size.MEDIUM : 20,
-        cls.Size.BIG : 24}
+        cls.Size.VERY_SMALL : 8,
+        cls.Size.SMALL : 12,
+        cls.Size.MEDIUM : 16,
+        cls.Size.BIG : 20,
+        cls.Size.VERY_BIG : 24
+        }
     return switcher [ver.size]
 
 def NN_YY (ver):
@@ -44,28 +46,28 @@ def LL (ver):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def NUM_REP_LLSS (ver):
-    return 48
+    return 36
 
 def NUM_REP_LASSO (ver):
-    return 1
+    return 2
 
 def NUM_REP_DDSS (ver):
     return 1
 
 def NUM_REP_OOMMPP (ver):
-    return 16
+    return 12
 
 def NUM_REP_HH (ver):
     return 12
 
 def S_G_INIT (ver):
-    return 2 ** (-5)
+    return 2 ** (-4)
 
 def NUM_S_G (ver):
     return 7
 
 def VALUE_SPACING_S_G (ver):
-    return np.sqrt (3)
+    return np.sqrt (2)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -83,8 +85,8 @@ def NUM_G_G (ver): # DS
 def G_G_DDSS (ver):
     return 2 * np.sqrt (np.log (NN_HH (ver)))
 
-def G_G_LASSO (ver): # same as `G_G_DDSS`
-    return 2 * np.sqrt (np.log (NN_HH (ver)))
+def G_G_LASSO (ver):
+    return NN_YY (ver) / 8
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -114,18 +116,18 @@ def D_G_PRECISION (ver):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def CVX_ITER_MAX (ver):
-    return 48
+    return 32
     # default: 100
 
 def CVX_TOL_ABS (ver):
-    return 1e-7
+    return 5e-7
     # default: 1e-7
 
 def CVX_TOL_REL (ver):
-    return 1e-6
+    return 5e-6
     # default: 1e-6
 
 def CVX_TOL_FEAS (ver):
-    return 1e-7
+    return 5e-7
     # default: 1e-7
 
