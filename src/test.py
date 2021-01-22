@@ -9,7 +9,11 @@ import constants as cst
 import classes as cls
 import functions as fct
 
-print (list (range (0, 5)))
+lst_legend_err = ["least square", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector", "proposed error bound"]
+lst_legend_time = lst_legend_err [:-1]
+
+print (lst_legend_err)
+print (lst_legend_time)
 
 '''
 a = np.array ([1,3,4,2,-7]).T

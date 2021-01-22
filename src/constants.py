@@ -14,17 +14,17 @@ def NN_H (ver):
 
 def NN_YY_t (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) / 2),
-      cls.Ratio.WIDE : int (NN_HH (ver) / 3),
-      cls.Ratio.SQUARE : int (NN_HH (ver) / 3),
+      cls.Ratio.TALL : int (NN_HH (ver) *5/6),
+      cls.Ratio.WIDE : int (NN_HH (ver) *2/3),
+      cls.Ratio.SQUARE : int (NN_HH (ver) *2/3),
       }
    return switcher [ver.ratio]
 
 def NN_YY_r (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) / 3),
-      cls.Ratio.WIDE : int (NN_HH (ver) / 2),
-      cls.Ratio.SQUARE : int (NN_HH (ver) / 3),
+      cls.Ratio.TALL : int (NN_HH (ver) *2/3),
+      cls.Ratio.WIDE : int (NN_HH (ver) *5/6),
+      cls.Ratio.SQUARE : int (NN_HH (ver) *2/3),
       }
    return switcher [ver.ratio]
 
@@ -42,16 +42,6 @@ def DIFF_SP (ver):
 
 def RELAX_THRESHOLD (ver):
    return 3
-
-def NUM_REP (met):
-   switcher = {
-      cls.Method.LLSS : 36,
-      cls.Method.OOMMPP_TWO : 12,
-      cls.Method.OOMMPP_INFTY : 12,
-      cls.Method.LASSO : 2,
-      cls.Method.DDSS : 1,
-      }
-   return switcher [met]
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -72,27 +62,33 @@ def LL (ver):
 def NUM_MET ():
     return 5
 
-def NUM_REP_MET (met):
+def NUM_STAGE (ver):
    switcher = {
-      cls.Method.LLSS : 36,
-      cls.Method.OOMMPP_TWO : 12,
-      cls.Method.OOMMPP_INFTY : 12,
+      cls.Stage.ONE: 1,
+      cls.Stage.TWO: 2,
+      cls.Stage.THREE: 3}
+   return switcher [ver.stage]
+
+def NUM_CHAN_MET (met):
+   num_hh = 12
+   switcher = {
+      cls.Method.LLSS : 24,
+      cls.Method.OOMMPP_TWO : 8,
+      cls.Method.OOMMPP_INFTY : 8,
       cls.Method.LASSO : 2,
       cls.Method.DDSS : 1,
       }
-   return switcher [met]
-
-def NUM_REP_HH ():
-   return 12
+   return switcher [met] * num_hh
 
 def S_G_INIT ():
-   return 2 ** (-4)
+   return 2 ** (-5)
 
 def NUM_S_G ():
    return 7
 
 def SCALE_S_G ():
-   return np.sqrt (2)
+   return 2
+   #return 2 ** (1/3)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -100,10 +96,10 @@ def G_G_DDSS (ver):
    return 2 * np.sqrt (np.log (NN_HH (ver)))
 
 def G_G_LASSO (ver):
-   return NN_YY (ver) / 8
+   return NN_YY_t (ver) * NN_YY_r (ver) / 8
 
 def H_G_OOMMPP_TWO (ver):
-   return np.sqrt (3 * NN_YY (ver))
+   return np.sqrt (3 * NN_YY_t (ver) * NN_YY_r (ver))
 
 def H_G_OOMMPP_INFTY (ver):
    return 2 * np.sqrt (np.log (NN_HH (ver)))

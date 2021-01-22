@@ -13,6 +13,6 @@
 bin/
 lib/
 plt/
+dat/
 doc/
 __pycache__/
-text.py

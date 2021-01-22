@@ -11,14 +11,13 @@ import constants as cst
 import classes as cls
 
 def execute (ver):
-
    cnt_met = 0
    cnt_chan = 0
    lst_lst_err = [] # each s_g, each method
    lst_lst_time = [] # each s_g, each method
    lst_met = [cls.Method.LLSS, cls.Method.LASSO, cls.Method.OOMMPP_TWO, cls.Method.OOMMPP_INFTY, cls.Method.DDSS]
-   lst_rep_met = np.array (list (map (cst.NUM_REP_MET, lst_met)))
-   num_rep_tot = lst_rep_met.sum () * cst.NUM_REP_HH ()
+   lst_chan_met = np.array (list (map (cst.NUM_CHAN_MET, lst_met)))
+   num_chan_tot = cst.NUM_S_G () * lst_chan_met.sum ()
 
    time_tot_start = time.time ()
    for i_s_g in range (cst.NUM_S_G ()):
@@ -29,18 +28,19 @@ def execute (ver):
       for j_met in range (cst.NUM_MET ()):
          met = lst_met [j_met]
          cnt_met += 1
-         num_rep_met = cst.NUM_REP_MET (met) * cst.NUM_REP_HH ()
+         num_chan_met = cst.NUM_CHAN_MET (met)
 
-         for _ in range (num_rep_met):
+         for _ in range (num_chan_met):
+            print ("channel instance ", cnt_chan, "...", sep = '', end = '\r', flush = True)
             cnt_chan += 1
-            print ("\r", cnt_chan, "...", sep = '', end = '', flush = True)
             hh = pick_hh (ver)
             norm_hh = np.linalg.norm (hh, ord = 'fro')
             g_r_h = np.zeros (2 * cst.NN_H (ver))
             sp = 2 * cst.NN_H (ver)
-            ss = list (range (sp)) # nonzero components of `g_r_h`
+            ss = list (range (sp)) # estimated nonzero components
+
             time_chan_start = time.time ()
-            for _ in range (cst.NUM_REP (met)):
+            for _ in range (cst.NUM_STAGE (ver)):
                kk = get_kk (ver)
                ff_bb = pick_mat_bb (cst.NN_YY_t (ver), ver)
                ff_rr = pick_mat_rr (cst.NN_YY_t (ver), ver).T
@@ -64,37 +64,38 @@ def execute (ver):
                elif (met == cls.Method.OOMMPP_INFTY):
                   g_r_ss_h = oommpp_infty (pp_r_ss, y_r, cst.H_G_OOMMPP_INFTY (ver) * s_g, ver)
                elif (met == cls.Method.LASSO):
-                  g_r_ss_h = lasso (pp_r_ss, y_r, cst.G_G_LASSO (ver) * s_g, ver)
+                  g_r_ss_h = lasso_qqpp (pp_r_ss, y_r, cst.G_G_LASSO (ver) * s_g, ver)
                elif (met == cls.Method.DDSS):
-                  g_r_ss_h = ddss (pp_r_ss, y_r, cst.G_G_DDSS (ver) * s_g, ver)
+                  g_r_ss_h = ddss_llpp (pp_r_ss, y_r, cst.G_G_DDSS (ver) * s_g, ver)
 
                embed_subvec (g_r_h, ss, g_r_ss_h)
                sp = sp - cst.DIFF_SP (ver)
                ss = get_supp (g_r_h, sp)
                g_r_h = mask_vec (g_r_h, ss)
 
-               rr = error_norm (hh, g_r_h, s_g, ver)
-               lst_err [j_met] += rr / num_rep_met
-            rate_progress = cnt_chan / (cst.NUM_S_G () * num_rep_tot)
-            time_hold = time.time ()
-            print ('', flush = True)
-            print ("   experiment ", cnt_met, sep = '', flush = True)
-            print ("     (", '%.1f' % (100 * rate_progress), "%; ",
-                  '%.2f' % (
-                  (time_hold - time_tot_start) * (1 - rate_progress) / (rate_progress * 60)),
-                  " min. remaining)",
-                  sep = '', flush = True)
-            print ("                        ", end = '\r') # clear last line
-            print ("   done")
+            rr = error_norm (hh, g_r_h, s_g, ver)
+            lst_err [j_met] += rr / num_chan_met
             time_chan_stop = time.time ()
-            lst_time [j_met] += (time_chan_stop - time_chan_start) / (60 * num_rep_met)
+            lst_time [j_met] += (time_chan_stop - time_chan_start) / (60 * num_chan_met)
+         time_hold = time.time ()
 
+         progress = cnt_chan / num_chan_tot
+         print ("   method ", cnt_met, "                    ", sep = '', end = '\n', flush = True)
+         print ("     (", '%.1f' % (100 * progress), "%; ",
+               '%.2f' % ((time_hold - time_tot_start) * (1 - progress) / (progress * 60)), " min. remaining)",
+               sep = '', flush = True)
+         print ("                            ", end = '\r') # clear last line
+         print ("   done")
+
+      '''
       # DS bound
       nor_hh = np.linalg.norm (hh, ord = 'fro')
-      nor_ee = (8 * s_g * (cst.LL (ver) ** (1/2)) *
+      nor_ee = (s_g * (cst.LL (ver) ** (1/2)) *
             (np.log (cst.NN_HH (ver)) ** (3/2)))
-      rr = nor_hh / (nor_ee + 2 * cst.NN_H (ver) * s_g)
+      #rr = (nor_ee + 2 * cst.NN_H (ver) * s_g) / nor_hh
+      rr = nor_ee / nor_hh
       lst_err.append (rr)
+      '''
 
       lst_lst_err.append (lst_err)
       lst_lst_time.append (lst_time)
@@ -102,43 +103,40 @@ def execute (ver):
 
    print (cnt_chan, "channel instances simulated")
    print (
-      "averaged time elapsed for each experiment: ",
-      '%.2f' % ((time_tot_stop - time_tot_start)
-            / (60 * cst.NUM_S_G () * cst.NUM_REP_HH ())),
-      " (min)", flush = True)
-   print (
-      "total time elapsed: ",
-      '%.2f' % ((time_tot_stop - time_tot_start) / 60),
-      " (min)", flush = True)
-
+         "total time elapsed: ",
+         '%.2f' % ((time_tot_stop - time_tot_start) / 60),
+         " (min)", flush = True)
 
    arr_s_g = (cst.S_G_INIT ()
-         * cst.SPACING_S_G (ver) ** (np.array (range (cst.NUM_S_G ()))))
+         * cst.SCALE_S_G () ** (np.array (range (cst.NUM_S_G ()))))
    arr_x = -10 * np.array (np.log (arr_s_g) / np.log (10))
-   lst_legend = ["Pseudo Inverse", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector", "Proposed upper bound"]
+   #lst_legend_err = ["least square", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector", "proposed error bound"]
+   #lst_legend_time = lst_legend_err [:-1]
+   lst_legend_err = ["least square", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector"]
+   lst_legend_time = lst_legend_err
 
    lst_lst_err = list (np.array (lst_lst_err).T) # each method, each s_g
-   lst_arr_err = [np.array (lst) for lst in lst_lst_err]
+   lst_arr_err = [10 * np.log (np.array (lst)) / np.log (10) for lst in lst_lst_err]
    label_x = "Signal level (log)"
    label_y = "Relative error norm (log)"
    save_table (arr_x, lst_arr_err,
-      label_x, label_y, lst_legend,
+      label_x, label_y, lst_legend_err,
       "error", ver)
    save_plot (arr_x, lst_arr_err,
-      label_x, label_y, lst_legend,
+      label_x, label_y, lst_legend_err,
       "error", ver)
 
    lst_lst_time = list (np.array (lst_lst_time).T) # each meth, each s_g
    lst_arr_time = [np.array (lst) for lst in lst_lst_time]
    label_x = "Signal level (log)"
-   label_y = "Time in seconds (log)"
+   label_y = "Time in minutes"
    save_table (
       arr_x, lst_arr_time,
-      label_x, label_y, lst_legend,
+      label_x, label_y, lst_legend_time,
       "time", ver)
    save_plot (
       arr_x, lst_arr_time,
-      label_x, label_y, lst_legend,
+      label_x, label_y, lst_legend_time,
       "time", ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -157,10 +155,10 @@ def lasso_qqpp (pp_r, y_r, g_g, ver):
    g_r_abs = cp.Variable ((nn))
 
    prob = cp.Problem (
-      cp.Minimize ((1/nn) * (cp.quad_form (g_r, qq) + k.T @ g_r)),
-      [g_r - g_r_abs <= 0,
-         - g_r - g_r_abs <= 0,
-         c.T @ g_r_abs <= g_g])
+         cp.Minimize (cp.quad_form (g_r, qq) + k.T @ g_r),
+         [g_r - g_r_abs <= 0,
+            - g_r - g_r_abs <= 0,
+            c.T @ g_r_abs <= g_g])
 
    try:
       prob.solve (solver = cp.ECOS,
@@ -170,13 +168,10 @@ def lasso_qqpp (pp_r, y_r, g_g, ver):
          feastol = cst.CVX_TOL_FEAS (ver))
       g_r_h = g_r.value
    except (cp.error.SolverError, cp.error.DCPError) as err:
-      print ("Lasso fails "
-            "when solving the convex program!", flush = True)
+      print ("Lasso fails to solve the convex program!", flush = True)
       print (err)
       g_r_h = np.linalg.pinv (pp_r) @ y_r
-
    return g_r_h
-
 
 def ddss_llpp (pp_r, y_r, g_g, ver):
    nn = 2 * cst.NN_H (ver)
@@ -186,11 +181,12 @@ def ddss_llpp (pp_r, y_r, g_g, ver):
    qq = pp_r.T @ pp_r
    c = np.ones ((nn))
 
-   prob = cp.Problem (cp.Minimize (c.T @ g_r_abs),
-      [g_r - g_r_abs <= 0,
-         - g_r - g_r_abs <= 0,
-         qq @ g_r - g_g * c <= k,
-         - qq @ g_r - g_g * c <= - k])
+   prob = cp.Problem (
+         cp.Minimize (c.T @ g_r_abs),
+         [g_r - g_r_abs <= 0,
+            - g_r - g_r_abs <= 0,
+            qq @ g_r - g_g * c <= k,
+            - qq @ g_r - g_g * c <= - k])
 
    try:
       prob.solve (solver = cp.ECOS,
@@ -200,22 +196,19 @@ def ddss_llpp (pp_r, y_r, g_g, ver):
          feastol = cst.CVX_TOL_FEAS (ver))
       g_r_h = g_r.value
    except (cp.error.SolverError, cp.error.DCPError) as err:
-      print ("Dantzig Selector fails "
-            "when solving the convex program!", flush = True)
+      print ("Dantzig Selector fails to solve the convex program!", flush = True)
       print (err)
       g_r_h = np.linalg.pinv (pp_r) @ y_r
-
    return g_r_h
 
-def oommpp_two (pp_r, y_r, g_g, ver):
+def oommpp_two (pp_r, y_r, h_g, ver):
    nn = 2 * cst.NN_H (ver)
    r = y_r # remained vector
-   tt = range (cst.NN_H (ver)) # list of column indices
-   ss = [] # extracted column indices
-   count_iter = 0
-   pp_r_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+   tt = range (nn) # list of column indices
+   ss = [] # estimated nonzero components
+   cnt_iter = 0
    while True:
-      count_iter += 1
+      cnt_iter += 1
       lst_match = [abs (pp_r [:, i].T @ r) for i in tt]
       s = np.argmax (lst_match)
       ss.append (s)
@@ -225,23 +218,21 @@ def oommpp_two (pp_r, y_r, g_g, ver):
 
       r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
       if (np.linalg.norm (r, ord = 2) <= h_g
-         or (count_iter >= nn )):
+            or (cnt_iter >= nn )):
          break
-   g_r_h_ss = pp_r_ss_inv @ y_r
-   for i in range (len(ss)):
-      g_r_h [ss [i]] = g_r_h_ss [i]
-
+   g_r_ss_h = pp_r_ss_inv @ y_r
+   g_r_h = np.zeros (nn)
+   embed_subvec (g_r_h, ss, g_r_ss_h)
    return g_r_h
 
-def oommpp_infty (pp_r, y_r, g_g, ver):
+def oommpp_infty (pp_r, y_r, h_g, ver):
    nn = 2 * cst.NN_H (ver)
    r = y_r # remainder
-   tt = range (cst.NN_H (ver)) # list of column indices
+   tt = range (nn) # list of column indices
    ss = [] # extracted column indices
-   count_iter = 0
-   pp_r_ss_inv = np.zeros ((cst.NN_H (ver), cst.NN_Y (ver)))
+   cnt_iter = 0
    while True:
-      count_iter += 1
+      cnt_iter += 1
       lst_match = [abs (pp_r [:, i].T @ r) for i in tt]
       s = np.argmax (lst_match)
       ss.append (s)
@@ -251,11 +242,11 @@ def oommpp_infty (pp_r, y_r, g_g, ver):
 
       r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
       if (np.linalg.norm (pp_r.T @ r, ord = np.inf) <= h_g
-         or count_iter >= cst.NN_HH (ver)):
+            or cnt_iter >= cst.NN_HH (ver)):
          break
-   g_r_h_ss = pp_r_ss_inv @ y_r
-   for i in range (len (ss)):
-      g_r_h [ss [i]] = g_r_h_ss [i]
+   g_r_ss_h = pp_r_ss_inv @ y_r
+   g_r_h = np.zeros (nn)
+   embed_subvec (g_r_h, ss, g_r_ss_h)
    return g_r_h
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -305,7 +296,8 @@ def error_norm (hh, g_r_h, s_g, ver):
    hh_h = (get_kk (ver) @ gg_h @ get_kk (ver).conj().T)
    nor_hh = np.linalg.norm (hh, ord = 'fro')
    nor_ee = np.linalg.norm (hh - hh_h, ord = 'fro')
-   return nor_hh / (nor_ee + 2 * cst.NN_H (ver) * s_g)
+   #return (nor_ee + 2 * cst.NN_H (ver) * s_g) / nor_hh
+   return nor_ee / nor_hh
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -385,9 +377,10 @@ def get_str_ver (ver):
       cls.Stage.ONE: "one",
       cls.Stage.TWO: "two",
       cls.Stage.THREE: "three"}
-   title = (switcher_size [ver.size] + "-" + 
+   title = (str (get_identity (ver)) + "-" +
+         switcher_size [ver.size] + "-" +
          switcher_ratio [ver.ratio] + "-" +
-         switcher_stage [ver.stage] + "-")
+         switcher_stage [ver.stage])
    return title
 
 def get_identity (ver):
@@ -407,8 +400,6 @@ def get_identity (ver):
          3 * switcher_ratio [ver.ratio] +
          switcher_stage [ver.stage])
    return iden
-
-
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -451,7 +442,7 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, str_title, ver):
       loc = 'upper left',
       borderaxespad = 0.)
 
-   os.system ("mkdir -p ../plt") # To create new directory only if nonexistent
+   os.system ("mkdir -p ../plt")
    path_plot_out = (
       os.path.abspath (os.path.join (os.getcwd (), os.path.pardir))
       + "/plt/" + str_title + "-" + get_str_ver (ver) + ".png")
@@ -461,7 +452,7 @@ def save_plot (arr_x, lst_arr_y, label_x, label_y, lst_legend, str_title, ver):
    plt.close ()
 
 def save_table (arr_x, lst_arr_y, label_x, label_y, lst_legend, str_title, ver):
-   os.system ("mkdir -p ../dat") # To create new directory only if nonexistent
+   os.system ("mkdir -p ../dat")
    path_table_out = (
       os.path.abspath (os.path.join (os.getcwd (), os.path.pardir))
       + "/dat/" + str_title + "-" + get_str_ver (ver) + ".txt")
@@ -476,5 +467,4 @@ def save_table (arr_x, lst_arr_y, label_x, label_y, lst_legend, str_title, ver):
          the_file.write (
             lst_legend [i] + '\t'
                + '\t'.join (map (str, lst_arr_y [i])) + '\n')
-
 
