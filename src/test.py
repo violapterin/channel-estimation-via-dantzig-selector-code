@@ -3,17 +3,53 @@
 import numpy as np
 import scipy as sp
 import cvxpy as cp
-import matplotlib.pyplot as plt
-from enum import Enum
-import os
-import time
+import random
 
 import constants as cst
 import classes as cls
 import functions as fct
-import random
 
-def test_alpha ():
+print (list (range (0, 5)))
+
+'''
+a = np.array ([1,3,4,2,-7]).T
+ss = fct.get_largest_index (a, 2)
+print ("a = ", a)
+print ("ss = ", ss)
+#a.T [ss] = np.array ([9,9]).T
+b = np.array ([9,8]).T
+fct.assign_subvec (a, ss, b)
+print ("a = ", a)
+quit ()
+'''
+
+'''
+np.set_printoptions (precision=2)
+
+nn = 5
+s = 2
+mm = 3
+g_ss = np.random.normal (0, 1, (s, 1))
+ss = np.random.choice (range (nn), s)
+g = np.zeros ((nn, 1))
+fct.embed_subvec (g, ss, g_ss)
+pp = np.random.normal (0, 1, (mm, nn))
+z = np.random.normal (0, 1/4, (mm, 1))
+y = pp @ g + z
+f_h = np.linalg.pinv (pp) @ y
+ss_h = fct.get_supp (f_h, s)
+g_h = np.zeros ((nn, 1))
+g_h = fct.mask_vec (g_h, f_h)
+
+
+print (f_h)
+print (g_h)
+'''
+
+quit ()
+
+
+def test_beta ():
     nn_yy = 8
     nn_hh = 16
     nn_y = nn_yy ** 2
@@ -55,15 +91,6 @@ def test_alpha ():
                 np.array ([np.exp (1J * i * theta) for i in range (nn_hh)]))
         hh = kk @ hh @ kk.conj().T
         h = fct.vectorize (hh)
-        
-        #h = np.zeros ((nn_h), dtype = complex)
-        #for i in range (crd_true):
-        #    h [i] = c_decay ** (i / crd_true)
-        #h /= np.linalg.norm (h)
-        #h = np.random.permutation (h)
-        #for i in range (nn_h):
-        #    tmp_ph = 2 * np.pi * np.random.uniform ()
-        #    h [i] *= np.exp (1J * tmp_ph)
 
         z = np.random.normal (0, s_g, (nn_y)) + 1J * np.random.normal (0, s_g, (nn_y))
         y = pp @ h + z
@@ -116,10 +143,10 @@ def test_alpha ():
         plt.savefig (nam_fil)
         plt.close ()
 
-
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-def test_beta ():
+def test_alpha ():
     nn_yy = 4
     nn_hh = 16
     nn_y = nn_yy ** 2
@@ -243,112 +270,6 @@ def test_beta ():
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-
-test_alpha ()
-
-quit ()
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-pp = np.array ([[5,-6,-7,3,-3,1], [12,-4,-16,-9,9,1]])
-g = np.array ([4,2,8,7,-9,0])
-idx_sort = np.argsort (np.abs (g))
-ss = idx_sort [-2:]
-pp_ss = pp [:, ss]
-print (pp)
-print (g)
-print (idx_sort)
-print (ss)
-print (pp_ss)
-
-quit ()
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-def mask (arr, threshold):
-    s = np.argsort (np.abs (arr))
-    num_mask = int (np.round (len (arr) * threshold))
-    for i in s [:num_mask]:
-        arr [i]=0
-
-a = np.random.randint (-20, 20, size = 10)
-print (a)
-mask (a, 0.3)
-print (a)
-
-quit ()
-
-print (a)
-b = np.argsort (np.abs (a))
-l = int (np.round (len (a)/2))
-for i in b[:l]:
-    a [i]=0
-
-quit ()
-
-nn_iter = 128
-s_g = 3
-g_g = 1
-nn_p = 128
-nn_m = 16
-e_tot_llss = 0
-e_tot_ddss_dir = 0
-e_tot_ddss_dia = 0
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-for _ in range (nn_iter):
-    g = np.random.normal (0, 1, (nn_p))
-    idx_mag = np.argsort (abs (g))
-    bb = np.sort (idx_mag [0 : nn_p - nn_m]).tolist ()
-    aa = [i for i in range (nn_p) if i not in bb]
-    g_aa = np.diag (g [aa])
-
-    z = np.random.normal (0, 1, (nn_m))
-    pp = np.random.normal (0, 1, (nn_m, nn_p))
-    y = pp @ g + z
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-    g_hat = cp.Variable (nn_p)
-    prob = cp.Problem (
-        cp.Minimize (cp.norm (g_hat, 1)),
-        [cp.norm (pp.conj().T @ (y - pp @ g_hat), "inf") <= g_g])
-
-    prob.solve (solver = cp.ECOS)
-    d_ddss = g - g_hat.value
-    #print (d_ddss)
-    e_tot_ddss_dir += np.linalg.norm (d_ddss)
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-nn = 24
-r1 = 1.2
-r2 = 0.4
-sc = np.array (range (nn))
-num_rep = 24
-os.system ("rm -r ../tmp")
-os.system ("mkdir ../tmp")
-
-for i in range (num_rep):
-    y1_t = np.random.normal (0, 1, nn) + r1 * sc
-    y2_t = np.random.normal (0, 1, nn) + r2 * sc
-    y1 = [x for _, x in sorted (
-            zip (y1_t, y2_t),
-            key = lambda pair: pair[0], reverse = True)]
-    y2 = [x for _, x in sorted (
-            zip (y1_t, y2_t),
-            key = lambda pair: pair[1], reverse = True)]
-
-    plt.plot(sc, y1, marker='v')
-    plt.plot(sc, y2, marker='^')
-    nam_fil = "../tmp/" + str(i).zfill(3) + ".png"
-    plt.savefig (nam_fil)
-    plt.close ()
 
 quit ()
 
