@@ -55,7 +55,7 @@ def execute (ver):
 
                y_r = find_rep_vec (y)
                pp_r = find_rep_mat (pp)
-               pp_r_ss = mask_mat (pp_r, ss)
+               pp_r_ss = extract_mat (pp_r, ss)
 
                if (met == cls.Method.LLSS):
                   g_r_ss_h = llss (pp_r_ss, y_r, ver)
@@ -147,7 +147,7 @@ def llss (pp_r, y_r, ver):
    return g_r_h
 
 def lasso_qqpp (pp_r, y_r, g_g, ver):
-   nn = 2 * cst.NN_H (ver)
+   nn = pp_r.shape [1]
    c = np.ones ((nn))
    k = - 2 * pp_r.T @ y_r
    qq = pp_r.T @ pp_r
@@ -174,7 +174,7 @@ def lasso_qqpp (pp_r, y_r, g_g, ver):
    return g_r_h
 
 def ddss_llpp (pp_r, y_r, g_g, ver):
-   nn = 2 * cst.NN_H (ver)
+   nn = pp_r.shape [1]
    g_r = cp.Variable (nn)
    g_r_abs = cp.Variable (nn)
    k = pp_r.T @ y_r
@@ -202,7 +202,7 @@ def ddss_llpp (pp_r, y_r, g_g, ver):
    return g_r_h
 
 def oommpp_two (pp_r, y_r, h_g, ver):
-   nn = 2 * cst.NN_H (ver)
+   nn = pp_r.shape [1]
    r = y_r # remained vector
    tt = range (nn) # list of column indices
    ss = [] # estimated nonzero components
@@ -213,7 +213,7 @@ def oommpp_two (pp_r, y_r, h_g, ver):
       s = np.argmax (lst_match)
       ss.append (s)
       ss = list (sorted (set (ss)))
-      pp_r_ss = pp_r [:, ss]
+      pp_r_ss = extract_mat (pp_r, ss)
       pp_r_ss_inv = np.linalg.pinv (pp_r_ss)
 
       r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
@@ -226,7 +226,7 @@ def oommpp_two (pp_r, y_r, h_g, ver):
    return g_r_h
 
 def oommpp_infty (pp_r, y_r, h_g, ver):
-   nn = 2 * cst.NN_H (ver)
+   nn = pp_r.shape [1]
    r = y_r # remainder
    tt = range (nn) # list of column indices
    ss = [] # extracted column indices
@@ -237,7 +237,7 @@ def oommpp_infty (pp_r, y_r, h_g, ver):
       s = np.argmax (lst_match)
       ss.append (s)
       ss = list (sorted (set (ss)))
-      pp_r_ss = pp_r [:, ss]
+      pp_r_ss = extract_mat (pp_r, ss)
       pp_r_ss_inv = np.linalg.pinv (pp_r_ss)
 
       r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
@@ -348,21 +348,23 @@ def get_supp (v, sp):
    return ss
 
 def mask_vec (u, ss):
-   ll = u.shape [0]
+   ll = len (ss)
    v = np.zeros (u.shape)
-   for i in range (len (ss)):
+   for i in range (ll):
       v [ss[i]] = u [ss[i]]
-   return np.array (v)
+   return v
 
-def mask_mat (uu, ss):
-   vv = np.zeros (uu.shape)
-   for i in range (len (ss)):
-      vv [:, ss[i]] = uu [:, ss[i]]
+def extract_mat (uu, ss):
+   ll = len (ss)
+   vv = np.zeros ((uu.shape [0], ll))
+   for i in range (ll):
+      vv [:, i] = uu [:, ss[i]]
    return vv
 
-def embed_subvec (v, ss, u):
-   for i in range (len (ss)):
-      v [ss[i]] = u [i]
+def embed_subvec (u, ss, v):
+   ll = len (ss)
+   for i in range (ll):
+      u [ss[i]] = v [i]
 
 def get_str_ver (ver):
    switcher_size = {

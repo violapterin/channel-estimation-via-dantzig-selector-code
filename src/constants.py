@@ -34,15 +34,12 @@ def NN_Y_t (ver):
 def NN_Y_r (ver):
    return NN_Y_r (ver) ** 2
 
-def SS_SUPP_H (ver):
-   return int (L * np.log (NN_HH (ver)))
-
 def DIFF_SP (ver):
    switcher = {
       cls.Stage.TWO: 3,
       cls.Stage.THREE: 2,
       cls.Stage.SIX: 1}
-   return switcher [ver.stage] * int (NN_H (ver) /9)
+   return switcher [ver.stage] * int (NN_H (ver) /12)
 
 def RELAX_THRESHOLD (ver):
    return 3
@@ -74,7 +71,7 @@ def NUM_STAGE (ver):
    return switcher [ver.stage]
 
 def NUM_CHAN_BASIC ():
-   return 16
+   return 18
 
 def NUM_CHAN_MET (met):
    switcher = {
@@ -113,7 +110,7 @@ def ITER_MAX_OOMMPP (ver):
    return 4 * NN_HH (ver)
 
 def MAX_NORM (ver):
-   return 8 * NN_HH (ver)
+   return 8 * NN_H (ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
