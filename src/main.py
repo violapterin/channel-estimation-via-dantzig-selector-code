@@ -6,9 +6,9 @@ import functions as fct
 import classes as cls
 
 ver = cls.Version (
-     cls.Size.SMALL,
-     cls.Ratio.TALL,
-     cls.Stage.ONE)
+     cls.Size.MEDIUM,
+     cls.Ratio.SQUARE,
+     cls.Stage.TWO)
 
 fct.execute (ver)
 

@@ -67,6 +67,8 @@ def execute (ver):
                   g_r_ss_h = lasso_qqpp (pp_r_ss, y_r, cst.G_G_LASSO (ver) * s_g, ver)
                elif (met == cls.Method.DDSS):
                   g_r_ss_h = ddss_llpp (pp_r_ss, y_r, cst.G_G_DDSS (ver) * s_g, ver)
+               if (np.linalg.norm (g_r_ss_h, ord = 2) > cst.MAX_NORM (ver)):
+                   g_r_ss_h = np.random.normal (0, 1, sp)
 
                embed_subvec (g_r_h, ss, g_r_ss_h)
                sp = sp - cst.DIFF_SP (ver)
@@ -110,15 +112,13 @@ def execute (ver):
    arr_s_g = (cst.S_G_INIT ()
          * cst.SCALE_S_G () ** (np.array (range (cst.NUM_S_G ()))))
    arr_x = -10 * np.array (np.log (arr_s_g) / np.log (10))
-   #lst_legend_err = ["least square", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector", "proposed error bound"]
-   #lst_legend_time = lst_legend_err [:-1]
    lst_legend_err = ["least square", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector"]
    lst_legend_time = lst_legend_err
 
    lst_lst_err = list (np.array (lst_lst_err).T) # each method, each s_g
    lst_arr_err = [10 * np.log (np.array (lst)) / np.log (10) for lst in lst_lst_err]
-   label_x = "Signal level (log)"
-   label_y = "Relative error norm (log)"
+   label_x = "Signal level (dB)"
+   label_y = "Relative error norm (dB)"
    save_table (arr_x, lst_arr_err,
       label_x, label_y, lst_legend_err,
       "error", ver)
@@ -128,7 +128,7 @@ def execute (ver):
 
    lst_lst_time = list (np.array (lst_lst_time).T) # each meth, each s_g
    lst_arr_time = [np.array (lst) for lst in lst_lst_time]
-   label_x = "Signal level (log)"
+   label_x = "Signal level (dB)"
    label_y = "Time in minutes"
    save_table (
       arr_x, lst_arr_time,
@@ -374,9 +374,9 @@ def get_str_ver (ver):
       cls.Ratio.WIDE: "wide",
       cls.Ratio.SQUARE: "square"}
    switcher_stage = {
-      cls.Stage.ONE: "one",
       cls.Stage.TWO: "two",
-      cls.Stage.THREE: "three"}
+      cls.Stage.THREE: "three",
+      cls.Stage.SIX: "six"}
    title = (str (get_identity (ver)) + "-" +
          switcher_size [ver.size] + "-" +
          switcher_ratio [ver.ratio] + "-" +
@@ -393,9 +393,9 @@ def get_identity (ver):
       cls.Ratio.WIDE: 1,
       cls.Ratio.SQUARE: 2}
    switcher_stage = {
-      cls.Stage.ONE: 0,
-      cls.Stage.TWO: 1,
-      cls.Stage.THREE: 2}
+      cls.Stage.TWO: 0,
+      cls.Stage.THREE: 1,
+      cls.Stage.SIX: 2}
    iden = (9 * switcher_size [ver.size] +
          3 * switcher_ratio [ver.ratio] +
          switcher_stage [ver.stage])

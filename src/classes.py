@@ -31,7 +31,7 @@ class Ratio (Enum):
    SQUARE = 3
 
 class Stage (Enum):
-   ONE = 1
-   TWO = 2
-   THREE = 3
+   TWO = 1
+   THREE = 2
+   SIX = 3
 

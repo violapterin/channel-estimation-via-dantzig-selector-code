@@ -3,9 +3,9 @@ import classes as cls
 
 def NN_HH (ver):
    switcher = {
-      cls.Size.SMALL : 6,
-      cls.Size.MEDIUM : 12,
-      cls.Size.BIG : 18,
+      cls.Size.SMALL : 12,
+      cls.Size.MEDIUM : 18,
+      cls.Size.BIG : 24,
       }
    return switcher [ver.size]
 
@@ -14,17 +14,17 @@ def NN_H (ver):
 
 def NN_YY_t (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) *5/6),
-      cls.Ratio.WIDE : int (NN_HH (ver) *2/3),
-      cls.Ratio.SQUARE : int (NN_HH (ver) *2/3),
+      cls.Ratio.TALL : int (NN_HH (ver) /2),
+      cls.Ratio.WIDE : int (NN_HH (ver) /3),
+      cls.Ratio.SQUARE : int (NN_HH (ver) /3),
       }
    return switcher [ver.ratio]
 
 def NN_YY_r (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) *2/3),
-      cls.Ratio.WIDE : int (NN_HH (ver) *5/6),
-      cls.Ratio.SQUARE : int (NN_HH (ver) *2/3),
+      cls.Ratio.TALL : int (NN_HH (ver) /3),
+      cls.Ratio.WIDE : int (NN_HH (ver) /2),
+      cls.Ratio.SQUARE : int (NN_HH (ver) /3),
       }
    return switcher [ver.ratio]
 
@@ -38,7 +38,11 @@ def SS_SUPP_H (ver):
    return int (L * np.log (NN_HH (ver)))
 
 def DIFF_SP (ver):
-   return int (NN_H (ver) / 9)
+   switcher = {
+      cls.Stage.TWO: 3,
+      cls.Stage.THREE: 2,
+      cls.Stage.SIX: 1}
+   return switcher [ver.stage] * int (NN_H (ver) /9)
 
 def RELAX_THRESHOLD (ver):
    return 3
@@ -55,7 +59,7 @@ def DIST_ANT (ver):
    return 3
 
 def LL (ver):
-   return 3
+   return 4
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -64,21 +68,23 @@ def NUM_MET ():
 
 def NUM_STAGE (ver):
    switcher = {
-      cls.Stage.ONE: 1,
       cls.Stage.TWO: 2,
-      cls.Stage.THREE: 3}
+      cls.Stage.THREE: 3,
+      cls.Stage.SIX: 6}
    return switcher [ver.stage]
 
+def NUM_CHAN_BASIC ():
+   return 16
+
 def NUM_CHAN_MET (met):
-   num_hh = 12
    switcher = {
-      cls.Method.LLSS : 24,
-      cls.Method.OOMMPP_TWO : 8,
-      cls.Method.OOMMPP_INFTY : 8,
+      cls.Method.LLSS : 12,
+      cls.Method.OOMMPP_TWO : 6,
+      cls.Method.OOMMPP_INFTY : 6,
       cls.Method.LASSO : 2,
       cls.Method.DDSS : 1,
       }
-   return switcher [met] * num_hh
+   return switcher [met] * NUM_CHAN_BASIC ()
 
 def S_G_INIT ():
    return 2 ** (-5)
@@ -87,8 +93,7 @@ def NUM_S_G ():
    return 7
 
 def SCALE_S_G ():
-   return 2
-   #return 2 ** (1/3)
+   return np.sqrt (2)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -106,6 +111,9 @@ def H_G_OOMMPP_INFTY (ver):
 
 def ITER_MAX_OOMMPP (ver):
    return 4 * NN_HH (ver)
+
+def MAX_NORM (ver):
+   return 8 * NN_HH (ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
