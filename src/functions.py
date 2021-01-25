@@ -39,6 +39,8 @@ def execute (ver):
             sp = 2 * cst.NN_H (ver)
             ss = list (range (sp)) # estimated nonzero components
 
+            y_tot = None
+            pp_tot = None
             time_chan_start = time.time ()
             for _ in range (cst.NUM_STAGE (ver)):
                kk = get_kk (ver)
@@ -55,25 +57,26 @@ def execute (ver):
 
                y_r = find_rep_vec (y)
                pp_r = find_rep_mat (pp)
-               pp_r_ss = extract_mat (pp_r, ss)
 
-               if (met == cls.Method.LLSS):
-                  g_r_ss_h = llss (pp_r_ss, y_r, ver)
-               elif (met == cls.Method.OOMMPP_TWO):
-                  g_r_ss_h = oommpp_two (pp_r_ss, y_r, cst.H_G_OOMMPP_TWO (ver) * s_g, ver)
-               elif (met == cls.Method.OOMMPP_INFTY):
-                  g_r_ss_h = oommpp_infty (pp_r_ss, y_r, cst.H_G_OOMMPP_INFTY (ver) * s_g, ver)
-               elif (met == cls.Method.LASSO):
-                  g_r_ss_h = lasso_qqpp (pp_r_ss, y_r, cst.G_G_LASSO (ver) * s_g, ver)
-               elif (met == cls.Method.DDSS):
-                  g_r_ss_h = ddss_llpp (pp_r_ss, y_r, cst.G_G_DDSS (ver) * s_g, ver)
-               if (np.linalg.norm (g_r_ss_h, ord = 2) > cst.MAX_NORM (ver)):
-                   g_r_ss_h = np.random.normal (0, 1, sp)
+               if y_tot is not None:
+                  y_tot = np.concatenate ((y_tot, y_r), axis = 0)
+                  pp_tot = np.concatenate ((pp_tot, pp_r), axis = 0)
+               else:
+                  y_tot = y_r
+                  pp_tot = pp_r
 
-               embed_subvec (g_r_h, ss, g_r_ss_h)
-               sp = sp - cst.DIFF_SP (ver)
-               ss = get_supp (g_r_h, sp)
-               g_r_h = mask_vec (g_r_h, ss)
+            if (met == cls.Method.LLSS):
+               g_r_h = llss (pp_tot, y_tot, ver)
+            elif (met == cls.Method.OOMMPP_TWO):
+               g_r_h = oommpp_two (pp_tot, y_tot, cst.H_G_OOMMPP_TWO (ver) * s_g, ver)
+            elif (met == cls.Method.OOMMPP_INFTY):
+               g_r_h = oommpp_infty (pp_tot, y_tot, cst.H_G_OOMMPP_INFTY (ver) * s_g, ver)
+            elif (met == cls.Method.LASSO):
+               g_r_h = lasso_qqpp (pp_tot, y_tot, cst.G_G_LASSO (ver) * s_g, ver)
+            elif (met == cls.Method.DDSS):
+               g_r_h = ddss_llpp (pp_tot, y_tot, cst.G_G_DDSS (ver) * s_g, ver)
+            if (np.linalg.norm (g_r_h, ord = 2) > cst.MAX_NORM (ver)):
+               g_r_h = np.random.normal (0, 1, sp)
 
             rr = error_norm (hh, g_r_h, s_g, ver)
             lst_err [j_met] += rr / num_chan_met
@@ -116,9 +119,9 @@ def execute (ver):
    lst_legend_time = lst_legend_err
 
    lst_lst_err = list (np.array (lst_lst_err).T) # each method, each s_g
-   lst_arr_err = [10 * np.log (np.array (lst)) / np.log (10) for lst in lst_lst_err]
+   lst_arr_err = [np.array (lst) for lst in lst_lst_err]
    label_x = "Signal level (dB)"
-   label_y = "Relative error norm (dB)"
+   label_y = "Relative error norm"
    save_table (arr_x, lst_arr_err,
       label_x, label_y, lst_legend_err,
       "error", ver)
@@ -376,9 +379,10 @@ def get_str_ver (ver):
       cls.Ratio.WIDE: "wide",
       cls.Ratio.SQUARE: "square"}
    switcher_stage = {
+      cls.Stage.ONE: "one",
       cls.Stage.TWO: "two",
-      cls.Stage.THREE: "three",
-      cls.Stage.SIX: "six"}
+      cls.Stage.FOUR: "four",
+      cls.Stage.EIGHT: "eight"}
    title = (str (get_identity (ver)) + "-" +
          switcher_size [ver.size] + "-" +
          switcher_ratio [ver.ratio] + "-" +
@@ -395,9 +399,10 @@ def get_identity (ver):
       cls.Ratio.WIDE: 1,
       cls.Ratio.SQUARE: 2}
    switcher_stage = {
-      cls.Stage.TWO: 0,
-      cls.Stage.THREE: 1,
-      cls.Stage.SIX: 2}
+      cls.Stage.ONE: 0,
+      cls.Stage.TWO: 1,
+      cls.Stage.FOUR: 2,
+      cls.Stage.EIGHT: 3}
    iden = (9 * switcher_size [ver.size] +
          3 * switcher_ratio [ver.ratio] +
          switcher_stage [ver.stage])

@@ -9,11 +9,24 @@ import constants as cst
 import classes as cls
 import functions as fct
 
-lst_legend_err = ["least square", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector", "proposed error bound"]
-lst_legend_time = lst_legend_err [:-1]
+aa = np.array ([[3,1,5], [2,4,6], [7,7,-7]])
+bb = np.array ([[9,7,-8], [-1,0,3]])
+x = fct.vectorize (aa)
+y = fct.vectorize (bb)
+z = np.concatenate ((x,y), axis=0)
+cc = np.concatenate ((aa,bb), axis=0)
+print (z)
+print (cc)
 
-print (lst_legend_err)
-print (lst_legend_time)
+'''
+a = np.array ([1,3,4])
+b = np.array ([6,-2,-7])
+c = np.concatenate ((a,b))
+print (a)
+print (b)
+print (c)
+'''
+
 
 '''
 a = np.array ([1,3,4,2,-7]).T

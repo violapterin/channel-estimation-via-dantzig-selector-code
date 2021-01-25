@@ -14,17 +14,17 @@ def NN_H (ver):
 
 def NN_YY_t (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) /2),
-      cls.Ratio.WIDE : int (NN_HH (ver) /3),
-      cls.Ratio.SQUARE : int (NN_HH (ver) /3),
+      cls.Ratio.TALL : int (NN_HH (ver) /3),
+      cls.Ratio.WIDE : int (NN_HH (ver) /4),
+      cls.Ratio.SQUARE : int (NN_HH (ver) /4),
       }
    return switcher [ver.ratio]
 
 def NN_YY_r (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) /3),
-      cls.Ratio.WIDE : int (NN_HH (ver) /2),
-      cls.Ratio.SQUARE : int (NN_HH (ver) /3),
+      cls.Ratio.TALL : int (NN_HH (ver) /4),
+      cls.Ratio.WIDE : int (NN_HH (ver) /3),
+      cls.Ratio.SQUARE : int (NN_HH (ver) /4),
       }
    return switcher [ver.ratio]
 
@@ -34,15 +34,6 @@ def NN_Y_t (ver):
 def NN_Y_r (ver):
    return NN_Y_r (ver) ** 2
 
-def DIFF_SP (ver):
-   switcher = {
-      cls.Stage.TWO: 3,
-      cls.Stage.THREE: 2,
-      cls.Stage.SIX: 1}
-   return switcher [ver.stage] * int (NN_H (ver) /12)
-
-def RELAX_THRESHOLD (ver):
-   return 3
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -56,7 +47,7 @@ def DIST_ANT (ver):
    return 3
 
 def LL (ver):
-   return 4
+   return 1
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -65,13 +56,14 @@ def NUM_MET ():
 
 def NUM_STAGE (ver):
    switcher = {
+      cls.Stage.ONE: 1,
       cls.Stage.TWO: 2,
-      cls.Stage.THREE: 3,
-      cls.Stage.SIX: 6}
+      cls.Stage.FOUR: 4,
+      cls.Stage.EIGHT: 8}
    return switcher [ver.stage]
 
 def NUM_CHAN_BASIC ():
-   return 18
+   return 12
 
 def NUM_CHAN_MET (met):
    switcher = {
@@ -95,7 +87,8 @@ def SCALE_S_G ():
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def G_G_DDSS (ver):
-   return 2 * np.sqrt (np.log (NN_HH (ver)))
+   return 8 * np.sqrt (np.log (NN_HH (ver)))
+   # return 2 * np.sqrt (np.log (NN_HH (ver)))
 
 def G_G_LASSO (ver):
    return NN_YY_t (ver) * NN_YY_r (ver) / 8
