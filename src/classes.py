@@ -34,5 +34,4 @@ class Stage (Enum):
    ONE = 1
    TWO = 2
    FOUR = 3
-   EIGHT = 4
 

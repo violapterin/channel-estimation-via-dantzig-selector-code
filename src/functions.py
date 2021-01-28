@@ -15,7 +15,8 @@ def execute (ver):
    cnt_chan = 0
    lst_lst_err = [] # each s_g, each method
    lst_lst_time = [] # each s_g, each method
-   lst_met = [cls.Method.LLSS, cls.Method.LASSO, cls.Method.OOMMPP_TWO, cls.Method.OOMMPP_INFTY, cls.Method.DDSS]
+   lst_met = cst.LST_MET ()
+
    lst_chan_met = np.array (list (map (cst.NUM_CHAN_MET, lst_met)))
    num_chan_tot = cst.NUM_S_G () * lst_chan_met.sum ()
 
@@ -32,25 +33,23 @@ def execute (ver):
 
          for _ in range (num_chan_met):
             print ("channel instance ", cnt_chan, "...", sep = '', end = '\r', flush = True)
+            kk = get_kk (ver)
             cnt_chan += 1
             hh = pick_hh (ver)
+            gg = kk.conj ().T @ hh @ kk
+            g = vectorize (gg)
             norm_hh = np.linalg.norm (hh, ord = 'fro')
             g_r_h = np.zeros (2 * cst.NN_H (ver))
-            sp = 2 * cst.NN_H (ver)
-            ss = list (range (sp)) # estimated nonzero components
 
             y_tot = None
             pp_tot = None
             time_chan_start = time.time ()
             for _ in range (cst.NUM_STAGE (ver)):
-               kk = get_kk (ver)
                ff_bb = pick_mat_bb (cst.NN_YY_t (ver), ver)
                ff_rr = pick_mat_rr (cst.NN_YY_t (ver), ver).T
                ww_bb = pick_mat_bb (cst.NN_YY_r (ver), ver)
                ww_rr = pick_mat_rr (cst.NN_YY_r (ver), ver)
                pp = np.kron (ff_bb.T @ ff_rr.T @ kk.conj (), ww_bb @ ww_rr @ kk)
-               gg = kk.conj ().T @ hh @ kk
-               g = vectorize (gg)
                zz = pick_zz (ver)
                z = vectorize (zz)
                y = pp @ g + (s_g / np.sqrt(2)) * z
@@ -76,7 +75,7 @@ def execute (ver):
             elif (met == cls.Method.DDSS):
                g_r_h = ddss_llpp (pp_tot, y_tot, cst.G_G_DDSS (ver) * s_g, ver)
             if (np.linalg.norm (g_r_h, ord = 2) > cst.MAX_NORM (ver)):
-               g_r_h = np.random.normal (0, 1, sp)
+               g_r_h = np.random.normal (0, 1, 2 * cst.NN_H (ver))
 
             rr = error_norm (hh, g_r_h, s_g, ver)
             lst_err [j_met] += rr / num_chan_met
@@ -92,16 +91,6 @@ def execute (ver):
          print ("                            ", end = '\r') # clear last line
          print ("   done")
 
-      '''
-      # DS bound
-      nor_hh = np.linalg.norm (hh, ord = 'fro')
-      nor_ee = (s_g * (cst.LL (ver) ** (1/2)) *
-            (np.log (cst.NN_HH (ver)) ** (3/2)))
-      #rr = (nor_ee + 2 * cst.NN_H (ver) * s_g) / nor_hh
-      rr = nor_ee / nor_hh
-      lst_err.append (rr)
-      '''
-
       lst_lst_err.append (lst_err)
       lst_lst_time.append (lst_time)
    time_tot_stop = time.time ()
@@ -114,19 +103,17 @@ def execute (ver):
 
    arr_s_g = (cst.S_G_INIT ()
          * cst.SCALE_S_G () ** (np.array (range (cst.NUM_S_G ()))))
-   arr_x = -10 * np.array (np.log (arr_s_g) / np.log (10))
-   lst_legend_err = ["least square", "Lasso", "OMP, two norm", "OMP, infinity norm", "Dantzig Selector"]
-   lst_legend_time = lst_legend_err
+   arr_x = -10 * np.array (np.log (arr_s_g)) / np.log (10)
 
    lst_lst_err = list (np.array (lst_lst_err).T) # each method, each s_g
-   lst_arr_err = [np.array (lst) for lst in lst_lst_err]
+   lst_arr_err = [10 * np.array (np.log (lst)) / np.log (10) for lst in lst_lst_err]
    label_x = "Signal level (dB)"
-   label_y = "Relative error norm"
+   label_y = "Relative error (dB)"
    save_table (arr_x, lst_arr_err,
-      label_x, label_y, lst_legend_err,
+      label_x, label_y, cst.LEGEND (),
       "error", ver)
    save_plot (arr_x, lst_arr_err,
-      label_x, label_y, lst_legend_err,
+      label_x, label_y, cst.LEGEND (),
       "error", ver)
 
    lst_lst_time = list (np.array (lst_lst_time).T) # each meth, each s_g
@@ -135,11 +122,11 @@ def execute (ver):
    label_y = "Time in minutes"
    save_table (
       arr_x, lst_arr_time,
-      label_x, label_y, lst_legend_time,
+      label_x, label_y, cst.LEGEND (),
       "time", ver)
    save_plot (
       arr_x, lst_arr_time,
-      label_x, label_y, lst_legend_time,
+      label_x, label_y, cst.LEGEND (),
       "time", ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -151,24 +138,36 @@ def llss (pp_r, y_r, ver):
 
 def lasso_qqpp (pp_r, y_r, g_g, ver):
    nn = pp_r.shape [1]
-   c = np.ones ((nn))
+   #c = np.ones ((nn))
    k = - 2 * pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    g_r = cp.Variable ((nn))
-   g_r_abs = cp.Variable ((nn))
+   #g_r_abs = cp.Variable ((nn))
+   #l_g = np.sqrt (cst.NN_YY_t (ver) * cst.NN_YY_r (ver)) / g_g
+   #l_g = cst.NN_HH (ver) / g_g
+   l_g = 1 / g_g
 
+   prob = cp.Problem (
+         cp.Minimize (
+               cp.norm (pp_r @ g_r - y_r, 2) ** 2
+               + l_g * cp.norm (g_r, 1)))
+
+   '''
+   prob = cp.Problem (
+         cp.Minimize (cp.norm2 (pp_r @ g_r - y_r)),
+         [cp.norm1 (g_r) <= g_g])
+   '''
+
+   '''
    prob = cp.Problem (
          cp.Minimize (cp.quad_form (g_r, qq) + k.T @ g_r),
          [g_r - g_r_abs <= 0,
             - g_r - g_r_abs <= 0,
             c.T @ g_r_abs <= g_g])
+   '''
 
    try:
-      prob.solve (solver = cp.ECOS,
-         max_iters = cst.CVX_ITER_MAX (ver),
-         abstol = cst.CVX_TOL_ABS (ver),
-         reltol = cst.CVX_TOL_REL (ver),
-         feastol = cst.CVX_TOL_FEAS (ver))
+      prob.solve (solver = cp.ECOS)
       g_r_h = g_r.value
    except (cp.error.SolverError, cp.error.DCPError) as err:
       print ("Lasso fails to solve the convex program!", flush = True)
@@ -183,20 +182,25 @@ def ddss_llpp (pp_r, y_r, g_g, ver):
    k = pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    c = np.ones ((nn))
+   #l_g = np.sqrt (cst.NN_YY_t (ver) * cst.NN_YY_r (ver)) / g_g
+   l_g = cst.NN_HH (ver) / g_g
 
+   prob = cp.Problem (
+         cp.Minimize (
+            cp.norm (g_r, 1)
+            + l_g * cp.norm (pp_r.T @ (y_r - pp_r @ g_r), 'inf')))
+
+   '''
    prob = cp.Problem (
          cp.Minimize (c.T @ g_r_abs),
          [g_r - g_r_abs <= 0,
             - g_r - g_r_abs <= 0,
             qq @ g_r - g_g * c <= k,
             - qq @ g_r - g_g * c <= - k])
+   '''
 
    try:
-      prob.solve (solver = cp.ECOS,
-         max_iters = cst.CVX_ITER_MAX (ver),
-         abstol = cst.CVX_TOL_ABS (ver),
-         reltol = cst.CVX_TOL_REL (ver),
-         feastol = cst.CVX_TOL_FEAS (ver))
+      prob.solve (solver = cp.ECOS)
       g_r_h = g_r.value
    except (cp.error.SolverError, cp.error.DCPError) as err:
       print ("Dantzig Selector fails to solve the convex program!", flush = True)
@@ -267,7 +271,7 @@ def pick_mat_bb (nn, ver):
 def pick_mat_rr (nn, ver):
    kk = np.sqrt (cst.NN_HH (ver)) * get_kk (ver)
    kk_ss = kk [random.sample (list (range (cst.NN_HH (ver))), nn), :]
-   return (np.sqrt (cst.NN_HH (ver) / nn)) * kk_ss
+   return kk_ss
 
 def pick_hh (ver):
    ret = np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype = complex)
@@ -294,12 +298,13 @@ def arr_resp (t, ver):
       * np.array ([np.exp (1J * i * t) for i in range (cst.NN_HH (ver))]))
 
 def error_norm (hh, g_r_h, s_g, ver):
+   kk = get_kk (ver)
    g_h = inv_find_rep_vec (g_r_h)
    gg_h = inv_vectorize (g_h, cst.NN_HH (ver), cst.NN_HH (ver))
-   hh_h = (get_kk (ver) @ gg_h @ get_kk (ver).conj().T)
+   hh_h = kk @ gg_h @ kk.conj().T
    nor_hh = np.linalg.norm (hh, ord = 'fro')
    nor_ee = np.linalg.norm (hh - hh_h, ord = 'fro')
-   #return (nor_ee + 2 * cst.NN_H (ver) * s_g) / nor_hh
+   #return (nor_ee + s_g) / nor_hh
    return nor_ee / nor_hh
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -381,8 +386,7 @@ def get_str_ver (ver):
    switcher_stage = {
       cls.Stage.ONE: "one",
       cls.Stage.TWO: "two",
-      cls.Stage.FOUR: "four",
-      cls.Stage.EIGHT: "eight"}
+      cls.Stage.FOUR: "four"}
    title = (str (get_identity (ver)) + "-" +
          switcher_size [ver.size] + "-" +
          switcher_ratio [ver.ratio] + "-" +
@@ -401,8 +405,7 @@ def get_identity (ver):
    switcher_stage = {
       cls.Stage.ONE: 0,
       cls.Stage.TWO: 1,
-      cls.Stage.FOUR: 2,
-      cls.Stage.EIGHT: 3}
+      cls.Stage.FOUR: 2}
    iden = (9 * switcher_size [ver.size] +
          3 * switcher_ratio [ver.ratio] +
          switcher_stage [ver.stage])
