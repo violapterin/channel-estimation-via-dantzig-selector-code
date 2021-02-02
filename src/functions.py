@@ -132,39 +132,28 @@ def execute (ver):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def llss (pp_r, y_r, ver):
-   pp_r_inv = np.linalg.pinv (pp_r)
+   try:
+      pp_r_inv = np.linalg.pinv (pp_r)
+   except (np.linalg.LinAlgError) as err:
+      print ("Moore Penrose inverse does not exist!", flush = True)
+      print (err)
+      g_r_h = np.zeros (pp_r.shape [1])
+      return g_r_h
+
    g_r_h = pp_r_inv @ y_r
    return g_r_h
 
 def lasso_qqpp (pp_r, y_r, g_g, ver):
    nn = pp_r.shape [1]
-   #c = np.ones ((nn))
    k = - 2 * pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    g_r = cp.Variable ((nn))
-   #g_r_abs = cp.Variable ((nn))
-   #l_g = np.sqrt (cst.NN_YY_t (ver) * cst.NN_YY_r (ver)) / g_g
-   #l_g = cst.NN_HH (ver) / g_g
-   l_g = 1 / g_g
+   l_g = cst.NN_HH (ver) / g_g
 
    prob = cp.Problem (
          cp.Minimize (
                cp.norm (pp_r @ g_r - y_r, 2) ** 2
                + l_g * cp.norm (g_r, 1)))
-
-   '''
-   prob = cp.Problem (
-         cp.Minimize (cp.norm2 (pp_r @ g_r - y_r)),
-         [cp.norm1 (g_r) <= g_g])
-   '''
-
-   '''
-   prob = cp.Problem (
-         cp.Minimize (cp.quad_form (g_r, qq) + k.T @ g_r),
-         [g_r - g_r_abs <= 0,
-            - g_r - g_r_abs <= 0,
-            c.T @ g_r_abs <= g_g])
-   '''
 
    try:
       prob.solve (solver = cp.ECOS)
@@ -182,22 +171,12 @@ def ddss_llpp (pp_r, y_r, g_g, ver):
    k = pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    c = np.ones ((nn))
-   #l_g = np.sqrt (cst.NN_YY_t (ver) * cst.NN_YY_r (ver)) / g_g
    l_g = cst.NN_HH (ver) / g_g
 
    prob = cp.Problem (
          cp.Minimize (
             cp.norm (g_r, 1)
             + l_g * cp.norm (pp_r.T @ (y_r - pp_r @ g_r), 'inf')))
-
-   '''
-   prob = cp.Problem (
-         cp.Minimize (c.T @ g_r_abs),
-         [g_r - g_r_abs <= 0,
-            - g_r - g_r_abs <= 0,
-            qq @ g_r - g_g * c <= k,
-            - qq @ g_r - g_g * c <= - k])
-   '''
 
    try:
       prob.solve (solver = cp.ECOS)
@@ -225,7 +204,7 @@ def oommpp_two (pp_r, y_r, h_g, ver):
 
       r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
       if (np.linalg.norm (r, ord = 2) <= h_g
-            or (cnt_iter >= nn )):
+            or (cnt_iter >= cst.H_G_OOMMPP_TWO (ver))):
          break
    g_r_ss_h = pp_r_ss_inv @ y_r
    g_r_h = np.zeros (nn)
@@ -249,7 +228,7 @@ def oommpp_infty (pp_r, y_r, h_g, ver):
 
       r = y_r - pp_r_ss @ pp_r_ss_inv @ y_r
       if (np.linalg.norm (pp_r.T @ r, ord = np.inf) <= h_g
-            or cnt_iter >= cst.NN_HH (ver)):
+            or cnt_iter >= cst.H_G_OOMMPP_INFTY (ver)):
          break
    g_r_ss_h = pp_r_ss_inv @ y_r
    g_r_h = np.zeros (nn)
@@ -274,14 +253,15 @@ def pick_mat_rr (nn, ver):
    return kk_ss
 
 def pick_hh (ver):
+   m = np.random.uniform (0, 2 * np.pi)
    ret = np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype = complex)
    for _ in range (cst.LL (ver)):
       alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver))
          + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver)))
       phi = (2 * np.pi * (cst.DIST_ANT (ver) /cst.LAMBDA_ANT (ver))
-         * np.sin (np.random.uniform (0, 2 * np.pi)))
+         * np.sin (np.random.uniform (m, 2 * np.pi /24)))
       theta = (2 * np.pi * (cst.DIST_ANT (ver) /cst.LAMBDA_ANT (ver))
-         * np.sin (np.random.uniform (0, 2 * np.pi)))
+         * np.sin (np.random.uniform (m, 2 * np.pi /24)))
       ret += alpha * np.outer (arr_resp (phi, ver), arr_resp (theta, ver))
    return ret
 

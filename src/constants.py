@@ -14,16 +14,16 @@ def NN_H (ver):
 
 def NN_YY_t (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) /2),
-      cls.Ratio.WIDE : int (NN_HH (ver) /3),
+      cls.Ratio.TALL : int (NN_HH (ver) /3),
+      cls.Ratio.WIDE : int (NN_HH (ver) /2),
       cls.Ratio.SQUARE : int (NN_HH (ver) /2),
       }
    return switcher [ver.ratio]
 
 def NN_YY_r (ver):
    switcher = {
-      cls.Ratio.TALL : int (NN_HH (ver) /3),
-      cls.Ratio.WIDE : int (NN_HH (ver) /2),
+      cls.Ratio.TALL : int (NN_HH (ver) /2),
+      cls.Ratio.WIDE : int (NN_HH (ver) /3),
       cls.Ratio.SQUARE : int (NN_HH (ver) /2),
       }
    return switcher [ver.ratio]
@@ -34,7 +34,6 @@ def NN_Y_t (ver):
 def NN_Y_r (ver):
    return NN_Y_r (ver) ** 2
 
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def LAMBDA_ANT (ver):
@@ -44,7 +43,7 @@ def DIST_ANT (ver):
    return 3
 
 def LL (ver):
-   return 2
+   return NN_HH (ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -72,13 +71,13 @@ def NUM_CHAN_MET (met):
    return switcher [met] * NUM_CHAN_BASIC ()
 
 def S_G_INIT ():
-   return 1
+   return 2 ** (-3)
 
 def NUM_S_G ():
-   return 4
+   return 6
 
 def SCALE_S_G ():
-   return np.sqrt (2)
+   return 2
 
 def LST_MET ():
    return [cls.Method.DDSS,
@@ -106,10 +105,9 @@ def H_G_OOMMPP_TWO (ver):
    return np.sqrt (3) * (NN_YY_t (ver) * NN_YY_r (ver)) ** (1/4)
 
 def H_G_OOMMPP_INFTY (ver):
-   return np.sqrt (3) * (NN_YY_t (ver) * NN_YY_r (ver)) ** (1/4) / NN_HH (ver)
+   return 2 * np.sqrt (np.log (NN_HH (ver)))
 
 def ITER_MAX_OOMMPP (ver):
-   #return NN_YY_t (ver) * NN_YY_r (ver)
    return 2 * NN_H (ver)
 
 def MAX_NORM (ver):
