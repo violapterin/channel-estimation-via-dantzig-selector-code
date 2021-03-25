@@ -1,37 +1,55 @@
 import numpy as np
-from enum import Enum
-import sys
 
 import constants as cst
 import functions as fct
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-class Version:
-   def __init__ (s, size, ratio, stage):
-      s.size = size
-      s.ratio = ratio
+class Version (object):
+   def __init__ (s, data, radio, channel, threshold, stage):
+      s.data = data
+      s.radio = radio
+      s.channel = channel
+      s.threshold = threshold
       s.stage= stage
 
-class Method (Enum):
+class Method (object):
    LLSS = 1
-   LASSO = 2
+   OOMMPP_TWO_LAX = 2
    OOMMPP_TWO = 3
-   OOMMPP_INFTY = 4
-   DDSS = 5
+   OOMMPP_TWO_TENSE = 4
+   OOMMPP_INFTY_LAX = 5
+   OOMMPP_INFTY = 6
+   OOMMPP_INFTY_TENSE = 7
+   LASSO_LAX = 8
+   LASSO = 9
+   LASSO_TENSE = 10
+   DDSS_LAX = 11
+   DDSS = 12
+   DDSS_TENSE = 13
 
-class Size (Enum):
+class Data (object):
    SMALL = 1
    MEDIUM = 2
    BIG = 3
 
-class Ratio (Enum):
-   TALL = 1
-   WIDE = 2
-   SQUARE = 3
+class Radio (object):
+   EQUAL = 1
+   TWICE = 2
 
-class Stage (Enum):
-   ONE = 1
-   TWO = 2
-   FOUR = 3
+class Channel (object):
+   SQUARE = 1
+   TALL = 2
+   WIDE = 3
+
+class Stage (object):
+   TWO = 1
+   FOUR = 2
+   SIX = 3
+
+class Threshold (object):
+   USUAL = 1
+   OOMMPP = 2
+   LASSO = 3
+   DDSS = 4
 

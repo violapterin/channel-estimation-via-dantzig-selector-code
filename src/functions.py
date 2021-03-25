@@ -15,7 +15,7 @@ def execute (ver):
    cnt_chan = 0
    lst_lst_err = [] # each s_g, each method
    lst_lst_time = [] # each s_g, each method
-   lst_met = cst.LST_MET ()
+   lst_met = cst.LST_MET (ver)
 
    lst_chan_met = np.array (list (map (cst.NUM_CHAN_MET, lst_met)))
    num_chan_tot = cst.NUM_S_G () * lst_chan_met.sum ()
@@ -24,32 +24,33 @@ def execute (ver):
    for i_s_g in range (cst.NUM_S_G ()):
       s_g = cst.S_G_INIT () * (cst.SCALE_S_G () ** i_s_g)
       print ("σ = ", '%.2f' % s_g, " :", sep = '')
-      lst_err = [0] * cst.NUM_MET ()
-      lst_time = [0] * cst.NUM_MET ()
-      for j_met in range (cst.NUM_MET ()):
+      lst_err = [0] * cst.NUM_MET (ver)
+      lst_time = [0] * cst.NUM_MET (ver)
+      for j_met in range (cst.NUM_MET (ver)):
          met = lst_met [j_met]
          cnt_met += 1
          num_chan_met = cst.NUM_CHAN_MET (met)
 
          for _ in range (num_chan_met):
             print ("channel instance ", cnt_chan, "...", sep = '', end = '\r', flush = True)
-            kk = get_kk (ver)
+            kk_t = get_kk (cst.NN_HH_t (ver))
+            kk_r = get_kk (cst.NN_HH_r (ver))
             cnt_chan += 1
             hh = pick_hh (ver)
-            gg = kk.conj ().T @ hh @ kk
+            gg = kk_r.conj ().T @ hh @ kk_t
             g = vectorize (gg)
             norm_hh = np.linalg.norm (hh, ord = 'fro')
-            g_r_h = np.zeros (2 * cst.NN_H (ver))
+            g_r_h = np.zeros (2 * cst.NN_HH_t (ver) * cst.NN_HH_r (ver))
 
             y_tot = None
             pp_tot = None
             time_chan_start = time.time ()
             for _ in range (cst.NUM_STAGE (ver)):
-               ff_bb = pick_mat_bb (cst.NN_YY_t (ver), ver)
-               ff_rr = pick_mat_rr (cst.NN_YY_t (ver), ver).T
-               ww_bb = pick_mat_bb (cst.NN_YY_r (ver), ver)
-               ww_rr = pick_mat_rr (cst.NN_YY_r (ver), ver)
-               pp = np.kron (ff_bb.T @ ff_rr.T @ kk.conj (), ww_bb @ ww_rr @ kk)
+               ff_bb = pick_mat_bb (ver).T
+               ff_rr = pick_mat_rr_t (ver).T
+               ww_bb = pick_mat_bb (ver)
+               ww_rr = pick_mat_rr_r (ver)
+               pp = np.kron (ff_bb.T @ ff_rr.T @ kk_t.conj (), ww_bb @ ww_rr @ kk_r)
                zz = pick_zz (ver)
                z = vectorize (zz)
                y = pp @ g + (s_g / np.sqrt(2)) * z
@@ -66,16 +67,37 @@ def execute (ver):
 
             if (met == cls.Method.LLSS):
                g_r_h = llss (pp_tot, y_tot, ver)
+
+            elif (met == cls.Method.OOMMPP_TWO_LAX):
+               g_r_h = oommpp_two (pp_tot, y_tot, 2 * cst.H_G_OOMMPP_TWO (ver) * s_g, ver)
             elif (met == cls.Method.OOMMPP_TWO):
                g_r_h = oommpp_two (pp_tot, y_tot, cst.H_G_OOMMPP_TWO (ver) * s_g, ver)
+            elif (met == cls.Method.OOMMPP_TWO_TENSE):
+               g_r_h = oommpp_two (pp_tot, y_tot, (1/2) * cst.H_G_OOMMPP_TWO (ver) * s_g, ver)
+
+            elif (met == cls.Method.OOMMPP_INFTY_LAX):
+               g_r_h = oommpp_infty (pp_tot, y_tot, 2 * cst.H_G_OOMMPP_INFTY (ver) * s_g, ver)
             elif (met == cls.Method.OOMMPP_INFTY):
                g_r_h = oommpp_infty (pp_tot, y_tot, cst.H_G_OOMMPP_INFTY (ver) * s_g, ver)
+            elif (met == cls.Method.OOMMPP_INFTY_TENSE):
+               g_r_h = oommpp_infty (pp_tot, y_tot, (1/2) * cst.H_G_OOMMPP_INFTY (ver) * s_g, ver)
+               
+            elif (met == cls.Method.LASSO_LAX):
+               g_r_h = lasso (pp_tot, y_tot, 2 * cst.G_G_LASSO (ver) * s_g, ver)
             elif (met == cls.Method.LASSO):
-               g_r_h = lasso_qqpp (pp_tot, y_tot, cst.G_G_LASSO (ver) * s_g, ver)
+               g_r_h = lasso (pp_tot, y_tot, cst.G_G_LASSO (ver) * s_g, ver)
+            elif (met == cls.Method.LASSO_TENSE):
+               g_r_h = lasso (pp_tot, y_tot, (1/2) * cst.G_G_LASSO (ver) * s_g, ver)
+
+            elif (met == cls.Method.DDSS_LAX):
+               g_r_h = ddss (pp_tot, y_tot, 2 * cst.G_G_DDSS (ver) * s_g, ver)
             elif (met == cls.Method.DDSS):
-               g_r_h = ddss_llpp (pp_tot, y_tot, cst.G_G_DDSS (ver) * s_g, ver)
+               g_r_h = ddss (pp_tot, y_tot, cst.G_G_DDSS (ver) * s_g, ver)
+            elif (met == cls.Method.DDSS_TENSE):
+               g_r_h = ddss (pp_tot, y_tot, (1/2) * cst.G_G_DDSS (ver) * s_g, ver)
+
             if (np.linalg.norm (g_r_h, ord = 2) > cst.MAX_NORM (ver)):
-               g_r_h = np.random.normal (0, 1, 2 * cst.NN_H (ver))
+               g_r_h = np.random.normal (0, 1, 2 * cst.NN_HH_t (ver) * cst.NN_HH_r (ver))
 
             rr = error_norm (hh, g_r_h, s_g, ver)
             lst_err [j_met] += rr / num_chan_met
@@ -143,12 +165,12 @@ def llss (pp_r, y_r, ver):
    g_r_h = pp_r_inv @ y_r
    return g_r_h
 
-def lasso_qqpp (pp_r, y_r, g_g, ver):
+def lasso (pp_r, y_r, g_g, ver):
    nn = pp_r.shape [1]
    k = - 2 * pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    g_r = cp.Variable ((nn))
-   l_g = cst.NN_HH (ver) / g_g
+   l_g = np.sqrt (cst.NN_HH_t (ver) * cst.NN_HH_r (ver)) / g_g
 
    prob = cp.Problem (
          cp.Minimize (
@@ -164,14 +186,14 @@ def lasso_qqpp (pp_r, y_r, g_g, ver):
       g_r_h = np.linalg.pinv (pp_r) @ y_r
    return g_r_h
 
-def ddss_llpp (pp_r, y_r, g_g, ver):
+def ddss (pp_r, y_r, g_g, ver):
    nn = pp_r.shape [1]
    g_r = cp.Variable (nn)
    g_r_abs = cp.Variable (nn)
    k = pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    c = np.ones ((nn))
-   l_g = cst.NN_HH (ver) / g_g
+   l_g = np.sqrt (cst.NN_HH_t (ver) * cst.NN_HH_r (ver)) / g_g
 
    prob = cp.Problem (
          cp.Minimize (
@@ -242,49 +264,53 @@ def mat_complex_normal (nn_1, nn_2):
       + 1J * np.random.normal (0, 1, (nn_1, nn_2))))
 
 def pick_zz (ver):
-   return mat_complex_normal (cst.NN_YY_t (ver), cst.NN_YY_r (ver))
+   return mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver))
 
-def pick_mat_bb (nn, ver):
-   return (mat_complex_normal (nn, nn) / np.sqrt (nn))
+def pick_mat_bb (ver):
+   return (mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver)) / np.sqrt (cst.NN_YY (ver)))
 
-def pick_mat_rr (nn, ver):
-   kk = np.sqrt (cst.NN_HH (ver)) * get_kk (ver)
-   kk_ss = kk [random.sample (list (range (cst.NN_HH (ver))), nn), :]
+def pick_mat_rr_t (ver):
+   kk = get_kk (cst.NN_HH_t (ver))
+   kk_ss = kk [random.sample (list (range (cst.NN_HH_t (ver))), cst.NN_YY (ver)), :]
+   return kk_ss
+
+def pick_mat_rr_r (ver):
+   kk = get_kk (cst.NN_HH_r (ver))
+   kk_ss = kk [random.sample (list (range (cst.NN_HH_r (ver))), cst.NN_YY (ver)), :]
    return kk_ss
 
 def pick_hh (ver):
    m = np.random.uniform (0, 2 * np.pi)
-   ret = np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype = complex)
+   ret = np.zeros ((cst.NN_HH_r (ver), cst.NN_HH_t (ver)), dtype = complex)
    for _ in range (cst.LL (ver)):
-      alpha = (np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver))
-         + 1J * np.random.normal (0, cst.NN_HH (ver) / cst.LL (ver)))
-      phi = (2 * np.pi * (cst.DIST_ANT (ver) /cst.LAMBDA_ANT (ver))
-         * np.sin (np.random.uniform (m, 2 * np.pi /24)))
-      theta = (2 * np.pi * (cst.DIST_ANT (ver) /cst.LAMBDA_ANT (ver))
-         * np.sin (np.random.uniform (m, 2 * np.pi /24)))
-      ret += alpha * np.outer (arr_resp (phi, ver), arr_resp (theta, ver))
+      c = np.sqrt (cst.NN_HH_t (ver) * cst.NN_HH_t (ver)) / cst.LL (ver)
+      a = 2 * np.pi * (cst.DIST_ANT (ver) /cst.LAMBDA_ANT (ver))
+      alpha = np.random.normal (0, c) + 1J * np.random.normal (0, c)
+      phi = a * np.sin (np.random.uniform (m, 2 * np.pi / 24))
+      theta = a * np.sin (np.random.uniform (m, 2 * np.pi / 24))
+      ret += alpha * np.outer (arr_resp (phi, cst.NN_HH_r (ver), ver), arr_resp (theta, cst.NN_HH_t (ver), ver))
    return ret
 
-def get_kk (ver):
-   ret = np.zeros ((cst.NN_HH (ver), cst.NN_HH (ver)), dtype = complex)
-   for n_1 in range (cst.NN_HH (ver)):
-      for n_2 in range (cst.NN_HH (ver)):
-         ret [n_1] [n_2] = ((1 / np.sqrt (cst.NN_HH (ver)))
-            * np.exp (2 * np.pi * 1J * n_1 * n_2 / cst.NN_HH (ver)))
+def get_kk (nn):
+   ret = np.zeros ((nn, nn), dtype = complex)
+   c = 1 / np.sqrt (nn)
+   for n_1 in range (nn):
+      for n_2 in range (nn):
+         ret [n_1] [n_2] = c * np.exp (2 * np.pi * 1J * n_1 * n_2 / nn)
    return ret
 
-def arr_resp (t, ver):
-   return ((1 / np.sqrt (cst.NN_HH (ver)))
-      * np.array ([np.exp (1J * i * t) for i in range (cst.NN_HH (ver))]))
+def arr_resp (t, nn, ver):
+   return ((1 / np.sqrt (nn))
+      * np.array ([np.exp (1J * i * t) for i in range (nn)]))
 
 def error_norm (hh, g_r_h, s_g, ver):
-   kk = get_kk (ver)
+   kk_t = get_kk (cst.NN_HH_t (ver))
+   kk_r = get_kk (cst.NN_HH_t (ver))
    g_h = inv_find_rep_vec (g_r_h)
-   gg_h = inv_vectorize (g_h, cst.NN_HH (ver), cst.NN_HH (ver))
-   hh_h = kk @ gg_h @ kk.conj().T
+   gg_h = inv_vectorize (g_h, cst.NN_HH_r (ver), cst.NN_HH_t (ver))
+   hh_h = kk_r @ gg_h @ kk_t.conj().T
    nor_hh = np.linalg.norm (hh, ord = 'fro')
    nor_ee = np.linalg.norm (hh - hh_h, ord = 'fro')
-   #return (nor_ee + s_g) / nor_hh
    return nor_ee / nor_hh
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -299,9 +325,9 @@ def find_rep_vec (v):
 def inv_find_rep_vec (v):
    assert (len (v) % 2 == 0)
    len_v =int (len (v) / 2)
-   v_re =np.array ([v [2 * i] for i in range (len_v)])
-   v_im =np.array ([v [2 * i + 1] for i in range (len_v)])
-   return v_re +1J *v_im
+   v_re = np.array ([v [2 * i] for i in range (len_v)])
+   v_im = np.array ([v [2 * i + 1] for i in range (len_v)])
+   return v_re + 1J * v_im
 
 def find_rep_mat (aa):
    ret =np.zeros ((2 * (aa.shape[0]), 2 * (aa.shape[1])))
@@ -355,41 +381,36 @@ def embed_subvec (u, ss, v):
       u [ss[i]] = v [i]
 
 def get_str_ver (ver):
-   switcher_size = {
-      cls.Size.SMALL: "small",
-      cls.Size.MEDIUM: "medium",
-      cls.Size.BIG: "big"}
-   switcher_ratio = {
-      cls.Ratio.TALL: "tall",
-      cls.Ratio.WIDE: "wide",
-      cls.Ratio.SQUARE: "square"}
+   switcher_data = {
+      cls.Data.SMALL : "small",
+      cls.Data.MEDIUM : "medium",
+      cls.Data.BIG : "big"}
+   switcher_radio = {
+      cls.Radio.EQUAL : "wide",
+      cls.Radio.TWICE : "twice",
+      }
+   switcher_channel = {
+      cls.Radio.SQUARE : "square",
+      cls.Radio.TALL : "tall",
+      cls.Radio.WIDE : "wide",
+      }
    switcher_stage = {
-      cls.Stage.ONE: "one",
-      cls.Stage.TWO: "two",
-      cls.Stage.FOUR: "four"}
-   title = (str (get_identity (ver)) + "-" +
-         switcher_size [ver.size] + "-" +
-         switcher_ratio [ver.ratio] + "-" +
-         switcher_stage [ver.stage])
+      cls.Stage.TWO : "two",
+      cls.Stage.FOUR : "four",
+      cls.Stage.SIX : "six",
+      }
+   switcher_threshold = {
+      cls.Stage.USUAL : "usual",
+      cls.Stage.OOMMPP : "oommpp",
+      cls.Stage.LASSO : "lasso",
+      cls.Stage.DDSS : "ddss",
+      }
+   title = (switcher_data [ver.data] + "-" +
+         switcher_radio [ver.radio] + "-" +
+         switcher_channel [ver.channel] + "-" +
+         switcher_stage [ver.stage] + "-" +
+         switcher_threshold [ver.threshold])
    return title
-
-def get_identity (ver):
-   switcher_size = {
-      cls.Size.SMALL: 0,
-      cls.Size.MEDIUM: 1,
-      cls.Size.BIG: 2}
-   switcher_ratio = {
-      cls.Ratio.TALL: 0,
-      cls.Ratio.WIDE: 1,
-      cls.Ratio.SQUARE: 2}
-   switcher_stage = {
-      cls.Stage.ONE: 0,
-      cls.Stage.TWO: 1,
-      cls.Stage.FOUR: 2}
-   iden = (9 * switcher_size [ver.size] +
-         3 * switcher_ratio [ver.ratio] +
-         switcher_stage [ver.stage])
-   return iden
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

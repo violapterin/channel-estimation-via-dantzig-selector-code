@@ -5,9 +5,5 @@ import os
 import functions as fct
 import classes as cls
 
-ver = cls.Version (cls.Size.SMALL, cls.Ratio.TALL, cls.Stage.ONE)
-fct.execute (ver)
-ver = cls.Version (cls.Size.SMALL, cls.Ratio.WIDE, cls.Stage.ONE)
-fct.execute (ver)
-ver = cls.Version (cls.Size.SMALL, cls.Ratio.SQUARE, cls.Stage.ONE)
+ver = cls.Version (cls.Data.SMALL, cls.Radio.EQUAL, cls.Channel.TALL, cls.Stage.TWO, cls.Threshold.USUAL)
 fct.execute (ver)
