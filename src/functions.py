@@ -129,26 +129,26 @@ def execute (ver):
 
    lst_lst_err = list (np.array (lst_lst_err).T) # each method, each s_g
    lst_arr_err = [10 * np.array (np.log (lst)) / np.log (10) for lst in lst_lst_err]
-   label_x = "Signal level (dB)"
-   label_y = "Relative error (dB)"
+   label_x = "Signal to noise rate (dB)"
+   label_y = "Relative error norm (dB)"
    save_table (arr_x, lst_arr_err,
-      label_x, label_y, cst.LEGEND (),
+      label_x, label_y, cst.LEGEND (ver),
       "error", ver)
    save_plot (arr_x, lst_arr_err,
-      label_x, label_y, cst.LEGEND (),
+      label_x, label_y, cst.LEGEND (ver),
       "error", ver)
 
    lst_lst_time = list (np.array (lst_lst_time).T) # each meth, each s_g
    lst_arr_time = [np.array (lst) for lst in lst_lst_time]
-   label_x = "Signal level (dB)"
-   label_y = "Time in minutes"
+   label_x = "Signal to noise rate (dB)"
+   label_y = "Time (minute)"
    save_table (
       arr_x, lst_arr_time,
-      label_x, label_y, cst.LEGEND (),
+      label_x, label_y, cst.LEGEND (ver),
       "time", ver)
    save_plot (
       arr_x, lst_arr_time,
-      label_x, label_y, cst.LEGEND (),
+      label_x, label_y, cst.LEGEND (ver),
       "time", ver)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -305,7 +305,7 @@ def arr_resp (t, nn, ver):
 
 def error_norm (hh, g_r_h, s_g, ver):
    kk_t = get_kk (cst.NN_HH_t (ver))
-   kk_r = get_kk (cst.NN_HH_t (ver))
+   kk_r = get_kk (cst.NN_HH_r (ver))
    g_h = inv_find_rep_vec (g_r_h)
    gg_h = inv_vectorize (g_h, cst.NN_HH_r (ver), cst.NN_HH_t (ver))
    hh_h = kk_r @ gg_h @ kk_t.conj().T
@@ -386,13 +386,13 @@ def get_str_ver (ver):
       cls.Data.MEDIUM : "medium",
       cls.Data.BIG : "big"}
    switcher_radio = {
-      cls.Radio.EQUAL : "wide",
+      cls.Radio.EQUAL : "equal",
       cls.Radio.TWICE : "twice",
       }
    switcher_channel = {
-      cls.Radio.SQUARE : "square",
-      cls.Radio.TALL : "tall",
-      cls.Radio.WIDE : "wide",
+      cls.Channel.SQUARE : "square",
+      cls.Channel.TALL : "tall",
+      cls.Channel.WIDE : "wide",
       }
    switcher_stage = {
       cls.Stage.TWO : "two",
@@ -400,10 +400,10 @@ def get_str_ver (ver):
       cls.Stage.SIX : "six",
       }
    switcher_threshold = {
-      cls.Stage.USUAL : "usual",
-      cls.Stage.OOMMPP : "oommpp",
-      cls.Stage.LASSO : "lasso",
-      cls.Stage.DDSS : "ddss",
+      cls.Threshold.USUAL : "usual",
+      cls.Threshold.OOMMPP : "oommpp",
+      cls.Threshold.LASSO : "lasso",
+      cls.Threshold.DDSS : "ddss",
       }
    title = (switcher_data [ver.data] + "-" +
          switcher_radio [ver.radio] + "-" +

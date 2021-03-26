@@ -57,9 +57,9 @@ def NUM_MET (ver):
 
 def NUM_STAGE (ver):
    switcher = {
-      cls.Stage.TWO : 1,
-      cls.Stage.FOUR : 2,
-      cls.Stage.SIX : 4
+      cls.Stage.TWO : 2,
+      cls.Stage.FOUR : 4,
+      cls.Stage.SIX : 6
       }
    return switcher [ver.stage]
 
@@ -85,10 +85,10 @@ def NUM_CHAN_MET (met):
    return switcher [met] * NUM_CHAN_BASIC ()
 
 def S_G_INIT ():
-   return 2 ** (-3)
+   return 2 ** (-2)
 
 def NUM_S_G ():
-   return 6
+   return 5
 
 def SCALE_S_G ():
    return 2
@@ -100,35 +100,35 @@ def LST_MET (ver):
          cls.Method.OOMMPP_INFTY,
          cls.Method.LLSS]
    if (ver.threshold == cls.Threshold.OOMMPP):
-      result.append (Method.OOMMPP_TWO_LAX)
-      result.append (Method.OOMMPP_TWO_TENSE)
-      result.append (Method.OOMMPP_INFTY_LAX)
-      result.append (Method.OOMMPP_INFTY_TENSE)
+      result.append (cls.Method.OOMMPP_TWO_LAX)
+      result.append (cls.Method.OOMMPP_TWO_TENSE)
+      result.append (cls.Method.OOMMPP_INFTY_LAX)
+      result.append (cls.Method.OOMMPP_INFTY_TENSE)
    if (ver.threshold == cls.Threshold.LASSO):
-      result.append (Method.LASSO_LAX)
-      result.append (Method.LASSO_TENSE)
+      result.append (cls.Method.LASSO_LAX)
+      result.append (cls.Method.LASSO_TENSE)
    if (ver.threshold == cls.Threshold.DDSS):
-      result.append (Method.DDSS_LAX)
-      result.append (Method.DDSS_TENSE)
+      result.append (cls.Method.DDSS_LAX)
+      result.append (cls.Method.DDSS_TENSE)
    return result
 
-def LEGEND ():
+def LEGEND (ver):
    result = ["DS",
          "Lasso",
-         "OMP, two norm",
-         "OMP, infinity norm",
+         "OMP, 2 norm",
+         "OMP, $\infty$ norm",
          "LS"]
    if (ver.threshold == cls.Threshold.OOMMPP):
-      result.append ("OMP, two norm, half $\gamma$")
-      result.append ("OMP, two norm, twice $\gamma$")
-      result.append ("OMP, $\infty$ norm, half $\gamma$")
+      result.append ("OMP, 2 norm, twice $\gamma$")
+      result.append ("OMP, 2 norm, half $\gamma$")
       result.append ("OMP, $\infty$ norm, twice $\gamma$")
+      result.append ("OMP, $\infty$ norm, half $\gamma$")
    if (ver.threshold == cls.Threshold.LASSO):
-      result.append ("Lasso, half $\gamma$")
       result.append ("Lasso, twice $\gamma$")
+      result.append ("Lasso, half $\gamma$")
    if (ver.threshold == cls.Threshold.DDSS):
-      result.append ("DS, half $\gamma$")
       result.append ("DS, twice $\gamma$")
+      result.append ("DS, half $\gamma$")
    return result
 
 
@@ -142,7 +142,7 @@ def G_G_LASSO (ver):
    return 2 * np.sqrt (np.log (np.sqrt (NN_HH_t (ver) * NN_HH_r (ver))))
 
 def H_G_OOMMPP_TWO (ver):
-   return np.sqrt (3) * (NN_YY_t (ver) * NN_YY_r (ver)) ** (1/4)
+   return np.sqrt (3) * np.sqrt (NN_YY (ver))
 
 def H_G_OOMMPP_INFTY (ver):
    return 2 * np.sqrt (np.log (np.sqrt (NN_HH_t (ver) * NN_HH_r (ver))))

@@ -6,7 +6,7 @@ import functions as fct
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 class Version (object):
-   def __init__ (s, data, radio, channel, threshold, stage):
+   def __init__ (s, data, radio, channel, stage, threshold):
       s.data = data
       s.radio = radio
       s.channel = channel
