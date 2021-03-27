@@ -6,9 +6,8 @@ import functions as fct
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 class Version (object):
-   def __init__ (s, data, radio, channel, stage, threshold):
+   def __init__ (s, data, channel, stage, threshold):
       s.data = data
-      s.radio = radio
       s.channel = channel
       s.threshold = threshold
       s.stage= stage
@@ -32,10 +31,6 @@ class Data (object):
    SMALL = 1
    MEDIUM = 2
    BIG = 3
-
-class Radio (object):
-   EQUAL = 1
-   TWICE = 2
 
 class Channel (object):
    SQUARE = 1

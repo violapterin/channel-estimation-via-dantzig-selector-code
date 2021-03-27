@@ -129,7 +129,7 @@ def execute (ver):
 
    lst_lst_err = list (np.array (lst_lst_err).T) # each method, each s_g
    lst_arr_err = [10 * np.array (np.log (lst)) / np.log (10) for lst in lst_lst_err]
-   label_x = "Signal to noise rate (dB)"
+   label_x = "Signal to noise ratio (dB)"
    label_y = "Relative error norm (dB)"
    save_table (arr_x, lst_arr_err,
       label_x, label_y, cst.LEGEND (ver),
@@ -140,7 +140,7 @@ def execute (ver):
 
    lst_lst_time = list (np.array (lst_lst_time).T) # each meth, each s_g
    lst_arr_time = [np.array (lst) for lst in lst_lst_time]
-   label_x = "Signal to noise rate (dB)"
+   label_x = "Signal to noise ratio (dB)"
    label_y = "Time (minute)"
    save_table (
       arr_x, lst_arr_time,
@@ -170,7 +170,7 @@ def lasso (pp_r, y_r, g_g, ver):
    k = - 2 * pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    g_r = cp.Variable ((nn))
-   l_g = np.sqrt (cst.NN_HH_t (ver) * cst.NN_HH_r (ver)) / g_g
+   l_g = 2 * np.sqrt (cst.NN_HH_t (ver) * cst.NN_HH_r (ver)) / g_g
 
    prob = cp.Problem (
          cp.Minimize (
@@ -193,7 +193,7 @@ def ddss (pp_r, y_r, g_g, ver):
    k = pp_r.T @ y_r
    qq = pp_r.T @ pp_r
    c = np.ones ((nn))
-   l_g = np.sqrt (cst.NN_HH_t (ver) * cst.NN_HH_r (ver)) / g_g
+   l_g = 2 * np.sqrt (cst.NN_HH_t (ver) * cst.NN_HH_r (ver)) / g_g
 
    prob = cp.Problem (
          cp.Minimize (
@@ -267,16 +267,16 @@ def pick_zz (ver):
    return mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver))
 
 def pick_mat_bb (ver):
-   return (mat_complex_normal (cst.NN_YY (ver), cst.NN_YY (ver)) / np.sqrt (cst.NN_YY (ver)))
+   return (mat_complex_normal (cst.NN_YY (ver), cst.NN_RR (ver)) / np.sqrt (cst.NN_RR (ver)))
 
 def pick_mat_rr_t (ver):
    kk = get_kk (cst.NN_HH_t (ver))
-   kk_ss = kk [random.sample (list (range (cst.NN_HH_t (ver))), cst.NN_YY (ver)), :]
+   kk_ss = kk [random.sample (list (range (cst.NN_HH_t (ver))), cst.NN_RR (ver)), :]
    return kk_ss
 
 def pick_mat_rr_r (ver):
    kk = get_kk (cst.NN_HH_r (ver))
-   kk_ss = kk [random.sample (list (range (cst.NN_HH_r (ver))), cst.NN_YY (ver)), :]
+   kk_ss = kk [random.sample (list (range (cst.NN_HH_r (ver))), cst.NN_RR (ver)), :]
    return kk_ss
 
 def pick_hh (ver):
@@ -385,10 +385,6 @@ def get_str_ver (ver):
       cls.Data.SMALL : "small",
       cls.Data.MEDIUM : "medium",
       cls.Data.BIG : "big"}
-   switcher_radio = {
-      cls.Radio.EQUAL : "equal",
-      cls.Radio.TWICE : "twice",
-      }
    switcher_channel = {
       cls.Channel.SQUARE : "square",
       cls.Channel.TALL : "tall",
@@ -406,7 +402,6 @@ def get_str_ver (ver):
       cls.Threshold.DDSS : "ddss",
       }
    title = (switcher_data [ver.data] + "-" +
-         switcher_radio [ver.radio] + "-" +
          switcher_channel [ver.channel] + "-" +
          switcher_stage [ver.stage] + "-" +
          switcher_threshold [ver.threshold])

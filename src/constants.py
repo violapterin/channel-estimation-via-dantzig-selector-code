@@ -3,32 +3,28 @@ import classes as cls
 
 def NN_YY (ver):
    switcher = {
-      cls.Data.SMALL : 2,
-      cls.Data.MEDIUM : 4,
-      cls.Data.BIG : 6,
+      cls.Data.SMALL : 4,
+      cls.Data.MEDIUM : 6,
+      cls.Data.BIG : 8,
       }
    return switcher [ver.data]
 
 def NN_RR (ver):
-   switcher = {
-      cls.Radio.EQUAL : NN_YY (ver),
-      cls.Radio.TWICE : 2 * NN_YY (ver),
-      }
-   return switcher [ver.radio]
+   return int ((3/2) * NN_YY (ver))
 
 def NN_HH_t (ver):
    switcher = {
-      cls.Channel.SQUARE : 3 * NN_YY (ver),
-      cls.Channel.TALL : 3 * NN_YY (ver),
-      cls.Channel.WIDE : 4 * NN_YY (ver),
+      cls.Channel.SQUARE : 2 * NN_YY (ver),
+      cls.Channel.TALL : 2 * NN_YY (ver),
+      cls.Channel.WIDE : 3 * NN_YY (ver),
       }
    return switcher [ver.channel]
 
 def NN_HH_r (ver):
    switcher = {
-      cls.Channel.SQUARE : 3 * NN_YY (ver),
-      cls.Channel.TALL : 4 * NN_YY (ver),
-      cls.Channel.WIDE : 3 * NN_YY (ver),
+      cls.Channel.SQUARE : 2 * NN_YY (ver),
+      cls.Channel.TALL : 3 * NN_YY (ver),
+      cls.Channel.WIDE : 2 * NN_YY (ver),
       }
    return switcher [ver.channel]
 
@@ -64,7 +60,7 @@ def NUM_STAGE (ver):
    return switcher [ver.stage]
 
 def NUM_CHAN_BASIC ():
-   return 128
+   return 48
 
 def NUM_CHAN_MET (met):
    switcher = {
