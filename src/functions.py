@@ -384,23 +384,24 @@ def get_str_ver (ver):
    switcher_data = {
       cls.Data.SMALL : "small",
       cls.Data.MEDIUM : "medium",
-      cls.Data.BIG : "big"}
+      cls.Data.BIG : "big",
+   }
    switcher_channel = {
       cls.Channel.SQUARE : "square",
       cls.Channel.TALL : "tall",
       cls.Channel.WIDE : "wide",
-      }
+   }
    switcher_stage = {
-      cls.Stage.TWO : "two",
-      cls.Stage.FOUR : "four",
+      cls.Stage.THREE : "three",
       cls.Stage.SIX : "six",
-      }
+      cls.Stage.NINE : "nine",
+   }
    switcher_threshold = {
       cls.Threshold.USUAL : "usual",
       cls.Threshold.OOMMPP : "oommpp",
       cls.Threshold.LASSO : "lasso",
       cls.Threshold.DDSS : "ddss",
-      }
+   }
    title = (switcher_data [ver.data] + "-" +
          switcher_channel [ver.channel] + "-" +
          switcher_stage [ver.stage] + "-" +

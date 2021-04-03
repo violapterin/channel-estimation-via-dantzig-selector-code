@@ -38,9 +38,9 @@ class Channel (object):
    WIDE = 3
 
 class Stage (object):
-   TWO = 1
-   FOUR = 2
-   SIX = 3
+   THREE = 1
+   SIX = 2
+   NINE = 3
 
 class Threshold (object):
    USUAL = 1

@@ -3,10 +3,10 @@ import classes as cls
 
 def NN_YY (ver):
    switcher = {
-      cls.Data.SMALL : 4,
-      cls.Data.MEDIUM : 6,
-      cls.Data.BIG : 8,
-      }
+      cls.Data.SMALL : 2,
+      cls.Data.MEDIUM : 4,
+      cls.Data.BIG : 6,
+   }
    return switcher [ver.data]
 
 def NN_RR (ver):
@@ -14,18 +14,18 @@ def NN_RR (ver):
 
 def NN_HH_t (ver):
    switcher = {
-      cls.Channel.SQUARE : 2 * NN_YY (ver),
-      cls.Channel.TALL : 2 * NN_YY (ver),
-      cls.Channel.WIDE : 3 * NN_YY (ver),
-      }
+      cls.Channel.SQUARE : 3 * NN_YY (ver),
+      cls.Channel.TALL : 3 * NN_YY (ver),
+      cls.Channel.WIDE : 4 * NN_YY (ver),
+   }
    return switcher [ver.channel]
 
 def NN_HH_r (ver):
    switcher = {
-      cls.Channel.SQUARE : 2 * NN_YY (ver),
-      cls.Channel.TALL : 3 * NN_YY (ver),
-      cls.Channel.WIDE : 2 * NN_YY (ver),
-      }
+      cls.Channel.SQUARE : 3 * NN_YY (ver),
+      cls.Channel.TALL : 4 * NN_YY (ver),
+      cls.Channel.WIDE : 3 * NN_YY (ver),
+   }
    return switcher [ver.channel]
 
 
@@ -38,25 +38,25 @@ def DIST_ANT (ver):
    return 3
 
 def LL (ver):
-   return int (np.sqrt (NN_HH_t (ver) * NN_HH_r (ver)))
+   return int (np.sqrt (NN_HH_t (ver) * NN_HH_r (ver)) / 2)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def NUM_MET (ver):
    switcher = {
-      cls.Threshold.USUAL: 5,
+      cls.Threshold.USUAL: 4,
       cls.Threshold.OOMMPP : 9,
       cls.Threshold.LASSO : 7,
       cls.Threshold.DDSS : 7,
-      }
+   }
    return switcher [ver.threshold]
 
 def NUM_STAGE (ver):
    switcher = {
-      cls.Stage.TWO : 2,
-      cls.Stage.FOUR : 4,
-      cls.Stage.SIX : 6
-      }
+      cls.Stage.THREE : 3,
+      cls.Stage.SIX : 6,
+      cls.Stage.NINE : 9
+   }
    return switcher [ver.stage]
 
 def NUM_CHAN_BASIC ():
@@ -77,56 +77,101 @@ def NUM_CHAN_MET (met):
       cls.Method.DDSS_LAX : 1,
       cls.Method.DDSS : 1,
       cls.Method.DDSS_TENSE : 1,
-      }
+   }
    return switcher [met] * NUM_CHAN_BASIC ()
 
 def S_G_INIT ():
-   return 2 ** (-2)
+   return 2 ** (-4)
 
 def NUM_S_G ():
-   return 5
+   return 6
 
 def SCALE_S_G ():
    return 2
 
 def LST_MET (ver):
-   result = [cls.Method.DDSS,
+   if (ver.threshold == cls.Threshold.USUAL):
+      result = [
+         cls.Method.DDSS,
          cls.Method.LASSO,
          cls.Method.OOMMPP_TWO,
          cls.Method.OOMMPP_INFTY,
-         cls.Method.LLSS]
+      ]
    if (ver.threshold == cls.Threshold.OOMMPP):
-      result.append (cls.Method.OOMMPP_TWO_LAX)
-      result.append (cls.Method.OOMMPP_TWO_TENSE)
-      result.append (cls.Method.OOMMPP_INFTY_LAX)
-      result.append (cls.Method.OOMMPP_INFTY_TENSE)
+      result = [
+         cls.Method.DDSS,
+         cls.Method.LASSO,
+         cls.Method.OOMMPP_TWO,
+         cls.Method.OOMMPP_TWO_LAX,
+         cls.Method.OOMMPP_TWO_TENSE,
+         cls.Method.OOMMPP_INFTY,
+         cls.Method.OOMMPP_INFTY_LAX,
+         cls.Method.OOMMPP_INFTY_TENSE,
+         cls.Method.LLSS,
+      ]
    if (ver.threshold == cls.Threshold.LASSO):
-      result.append (cls.Method.LASSO_LAX)
-      result.append (cls.Method.LASSO_TENSE)
+      result = [
+         cls.Method.DDSS,
+         cls.Method.LASSO,
+         cls.Method.LASSO_LAX,
+         cls.Method.LASSO_TENSE,
+         cls.Method.OOMMPP_TWO,
+         cls.Method.OOMMPP_INFTY,
+         cls.Method.LLSS,
+      ]
    if (ver.threshold == cls.Threshold.DDSS):
-      result.append (cls.Method.DDSS_LAX)
-      result.append (cls.Method.DDSS_TENSE)
+      result = [
+         cls.Method.DDSS,
+         cls.Method.DDSS_LAX,
+         cls.Method.DDSS_TENSE,
+         cls.Method.LASSO,
+         cls.Method.OOMMPP_TWO,
+         cls.Method.OOMMPP_INFTY,
+         cls.Method.LLSS,
+      ]
    return result
 
 def LEGEND (ver):
-   result = ["DS",
+   if (ver.threshold == cls.Threshold.USUAL):
+      result = [
+         "DS",
          "Lasso",
          "OMP, 2 norm",
          "OMP, $\infty$ norm",
-         "LS"]
+      ]
    if (ver.threshold == cls.Threshold.OOMMPP):
-      result.append ("OMP, 2 norm, twice $\gamma$")
-      result.append ("OMP, 2 norm, half $\gamma$")
-      result.append ("OMP, $\infty$ norm, twice $\gamma$")
-      result.append ("OMP, $\infty$ norm, half $\gamma$")
+      result = [
+         "DS",
+         "Lasso",
+         "OMP, 2 norm",
+         "OMP, 2 norm, twice $\gamma$",
+         "OMP, 2 norm, half $\gamma$",
+         "OMP, $\infty$ norm",
+         "OMP, $\infty$ norm, twice $\gamma$",
+         "OMP, $\infty$ norm, half $\gamma$",
+         "LS",
+      ]
    if (ver.threshold == cls.Threshold.LASSO):
-      result.append ("Lasso, twice $\gamma$")
-      result.append ("Lasso, half $\gamma$")
+      result = [
+         "DS",
+         "Lasso",
+         "Lasso, twice $\gamma$",
+         "Lasso, half $\gamma$",
+         "OMP, 2 norm",
+         "OMP, $\infty$ norm",
+         "LS",
+      ]
    if (ver.threshold == cls.Threshold.DDSS):
-      result.append ("DS, twice $\gamma$")
-      result.append ("DS, half $\gamma$")
+      result = [
+         "DS",
+         "DS, twice $\gamma$",
+         "DS, half $\gamma$",
+         "Lasso",
+         "OMP, 2 norm",
+         "OMP, $\infty$ norm",
+         "LS",
+      ]
    return result
-
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
