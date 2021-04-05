@@ -44,10 +44,10 @@ def LL (ver):
 
 def NUM_MET (ver):
    switcher = {
-      cls.Threshold.USUAL: 4,
-      cls.Threshold.OOMMPP : 9,
-      cls.Threshold.LASSO : 7,
-      cls.Threshold.DDSS : 7,
+      cls.Threshold.USUAL: 5,
+      cls.Threshold.OOMMPP : 8,
+      cls.Threshold.LASSO : 6,
+      cls.Threshold.DDSS : 6,
    }
    return switcher [ver.threshold]
 
@@ -60,7 +60,7 @@ def NUM_STAGE (ver):
    return switcher [ver.stage]
 
 def NUM_CHAN_BASIC ():
-   return 48
+   return 96
 
 def NUM_CHAN_MET (met):
    switcher = {
@@ -81,98 +81,13 @@ def NUM_CHAN_MET (met):
    return switcher [met] * NUM_CHAN_BASIC ()
 
 def S_G_INIT ():
-   return 2 ** (-4)
+   return 2 ** (-2)
 
 def NUM_S_G ():
    return 6
 
 def SCALE_S_G ():
-   return 2
-
-def LST_MET (ver):
-   if (ver.threshold == cls.Threshold.USUAL):
-      result = [
-         cls.Method.DDSS,
-         cls.Method.LASSO,
-         cls.Method.OOMMPP_TWO,
-         cls.Method.OOMMPP_INFTY,
-      ]
-   if (ver.threshold == cls.Threshold.OOMMPP):
-      result = [
-         cls.Method.DDSS,
-         cls.Method.LASSO,
-         cls.Method.OOMMPP_TWO,
-         cls.Method.OOMMPP_TWO_LAX,
-         cls.Method.OOMMPP_TWO_TENSE,
-         cls.Method.OOMMPP_INFTY,
-         cls.Method.OOMMPP_INFTY_LAX,
-         cls.Method.OOMMPP_INFTY_TENSE,
-         cls.Method.LLSS,
-      ]
-   if (ver.threshold == cls.Threshold.LASSO):
-      result = [
-         cls.Method.DDSS,
-         cls.Method.LASSO,
-         cls.Method.LASSO_LAX,
-         cls.Method.LASSO_TENSE,
-         cls.Method.OOMMPP_TWO,
-         cls.Method.OOMMPP_INFTY,
-         cls.Method.LLSS,
-      ]
-   if (ver.threshold == cls.Threshold.DDSS):
-      result = [
-         cls.Method.DDSS,
-         cls.Method.DDSS_LAX,
-         cls.Method.DDSS_TENSE,
-         cls.Method.LASSO,
-         cls.Method.OOMMPP_TWO,
-         cls.Method.OOMMPP_INFTY,
-         cls.Method.LLSS,
-      ]
-   return result
-
-def LEGEND (ver):
-   if (ver.threshold == cls.Threshold.USUAL):
-      result = [
-         "DS",
-         "Lasso",
-         "OMP, 2 norm",
-         "OMP, $\infty$ norm",
-      ]
-   if (ver.threshold == cls.Threshold.OOMMPP):
-      result = [
-         "DS",
-         "Lasso",
-         "OMP, 2 norm",
-         "OMP, 2 norm, twice $\gamma$",
-         "OMP, 2 norm, half $\gamma$",
-         "OMP, $\infty$ norm",
-         "OMP, $\infty$ norm, twice $\gamma$",
-         "OMP, $\infty$ norm, half $\gamma$",
-         "LS",
-      ]
-   if (ver.threshold == cls.Threshold.LASSO):
-      result = [
-         "DS",
-         "Lasso",
-         "Lasso, twice $\gamma$",
-         "Lasso, half $\gamma$",
-         "OMP, 2 norm",
-         "OMP, $\infty$ norm",
-         "LS",
-      ]
-   if (ver.threshold == cls.Threshold.DDSS):
-      result = [
-         "DS",
-         "DS, twice $\gamma$",
-         "DS, half $\gamma$",
-         "Lasso",
-         "OMP, 2 norm",
-         "OMP, $\infty$ norm",
-         "LS",
-      ]
-   return result
-
+   return np.sqrt (2)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -194,9 +109,6 @@ def ITER_MAX_OOMMPP (ver):
 def MAX_NORM (ver):
    return 4 * NN_HH_t (ver) * NN_HH_r (ver)
 
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 def CVX_ITER_MAX (ver):
    return 32 # default : 100
 
@@ -208,4 +120,86 @@ def CVX_TOL_REL (ver):
 
 def CVX_TOL_FEAS (ver):
    return 5e-7 # default : 1e-7
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+def LST_MET (ver):
+   if (ver.threshold == cls.Threshold.USUAL):
+      result = [
+         cls.Method.DDSS,
+         cls.Method.LASSO,
+         cls.Method.OOMMPP_TWO,
+         cls.Method.OOMMPP_INFTY,
+         cls.Method.LLSS,
+      ]
+   if (ver.threshold == cls.Threshold.OOMMPP):
+      result = [
+         cls.Method.DDSS,
+         cls.Method.LASSO,
+         cls.Method.OOMMPP_TWO,
+         cls.Method.OOMMPP_TWO_LAX,
+         cls.Method.OOMMPP_TWO_TENSE,
+         cls.Method.OOMMPP_INFTY,
+         cls.Method.OOMMPP_INFTY_LAX,
+         cls.Method.OOMMPP_INFTY_TENSE,
+      ]
+   if (ver.threshold == cls.Threshold.LASSO):
+      result = [
+         cls.Method.DDSS,
+         cls.Method.LASSO,
+         cls.Method.LASSO_LAX,
+         cls.Method.LASSO_TENSE,
+         cls.Method.OOMMPP_TWO,
+         cls.Method.OOMMPP_INFTY,
+      ]
+   if (ver.threshold == cls.Threshold.DDSS):
+      result = [
+         cls.Method.DDSS,
+         cls.Method.DDSS_LAX,
+         cls.Method.DDSS_TENSE,
+         cls.Method.LASSO,
+         cls.Method.OOMMPP_TWO,
+         cls.Method.OOMMPP_INFTY,
+      ]
+   return result
+
+def LEGEND (ver):
+   if (ver.threshold == cls.Threshold.USUAL):
+      result = [
+         "DS",
+         "Lasso",
+         "OMP, 2 norm",
+         "OMP, $\infty$ norm",
+         "LS",
+      ]
+   if (ver.threshold == cls.Threshold.OOMMPP):
+      result = [
+         "DS",
+         "Lasso",
+         "OMP, 2 norm",
+         "OMP, 2 norm, twice $\gamma$",
+         "OMP, 2 norm, half $\gamma$",
+         "OMP, $\infty$ norm",
+         "OMP, $\infty$ norm, twice $\gamma$",
+         "OMP, $\infty$ norm, half $\gamma$",
+      ]
+   if (ver.threshold == cls.Threshold.LASSO):
+      result = [
+         "DS",
+         "Lasso",
+         "Lasso, twice $\gamma$",
+         "Lasso, half $\gamma$",
+         "OMP, 2 norm",
+         "OMP, $\infty$ norm",
+      ]
+   if (ver.threshold == cls.Threshold.DDSS):
+      result = [
+         "DS",
+         "DS, twice $\gamma$",
+         "DS, half $\gamma$",
+         "Lasso",
+         "OMP, 2 norm",
+         "OMP, $\infty$ norm",
+      ]
+   return result
 
